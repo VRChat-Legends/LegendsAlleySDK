@@ -28,6 +28,7 @@ namespace LegendsNexus.Alley.Editor
         private Button _loginButton;
         private Button _loginCancelButton;
         private Button _signOutButton;
+        private Button _refreshButton;
         private Button _checkButton;
         private Button _uploadButton;
         private DropdownField _eventDropdown;
@@ -94,6 +95,7 @@ namespace LegendsNexus.Alley.Editor
             _loginButton = rootVisualElement.Q<Button>("login-button");
             _loginCancelButton = rootVisualElement.Q<Button>("login-cancel-button");
             _signOutButton = rootVisualElement.Q<Button>("signout-button");
+            _refreshButton = rootVisualElement.Q<Button>("refresh-button");
             _checkButton = rootVisualElement.Q<Button>("check-button");
             _uploadButton = rootVisualElement.Q<Button>("upload-button");
             _eventDropdown = rootVisualElement.Q<DropdownField>("event-dropdown");
@@ -150,6 +152,7 @@ namespace LegendsNexus.Alley.Editor
             _loginButton.clicked += StartSignIn;
             _loginCancelButton.clicked += () => _loginCancel?.Cancel();
             _signOutButton.clicked += StartSignOut;
+            _refreshButton.clicked += StartRefresh;
             _checkButton.clicked += RunCheck;
             _uploadButton.clicked += StartUpload;
             _staffSyncButton.clicked += StartStaffSync;
@@ -244,6 +247,37 @@ namespace LegendsNexus.Alley.Editor
             RefreshUi();
         }
 
+        /* re-pulls the session, community, events and staff roster without a fresh sign in */
+        private async void StartRefresh()
+        {
+            if (_busy || !AlleySession.IsSignedIn) return;
+            _busy = true;
+            _refreshButton.SetEnabled(false);
+            SetStatus("Refreshing your info...");
+            SetTicker(true);
+            try
+            {
+                bool ok = await AlleySession.Resume();
+                if (this == null) return;
+                if (ok && AlleySession.IsStaff) _ = RefreshStaffData();
+                SetStatus(ok ? "Everything is up to date." : "Session expired, sign in again.");
+            }
+            catch (Exception e)
+            {
+                if (this != null) SetStatus("Refresh failed: " + e.Message);
+            }
+            finally
+            {
+                _busy = false;
+                if (this != null)
+                {
+                    SetTicker(false);
+                    _refreshButton.SetEnabled(true);
+                    RefreshUi();
+                }
+            }
+        }
+
         private async void StartLogoUpload()
         {
             if (_busy || AlleySession.Community == null) return;
@@ -313,6 +347,7 @@ namespace LegendsNexus.Alley.Editor
 
             _eventStrip.style.display = signedIn ? DisplayStyle.Flex : DisplayStyle.None;
             _signOutButton.style.display = signedIn ? DisplayStyle.Flex : DisplayStyle.None;
+            _refreshButton.style.display = signedIn ? DisplayStyle.Flex : DisplayStyle.None;
             _loginCancelButton.style.display = DisplayStyle.None;
             _uploadProgress.style.display = DisplayStyle.None;
 

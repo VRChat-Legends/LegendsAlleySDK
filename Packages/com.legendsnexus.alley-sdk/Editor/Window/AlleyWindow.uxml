@@ -8,6 +8,7 @@
             </ui:VisualElement>
             <ui:VisualElement class="alley-header-spacer" />
             <ui:Button name="signout-button" text="SIGN OUT" class="alley-button-ghost" />
+            <ui:Button name="refresh-button" text="REFRESH" class="alley-button-ghost alley-refresh" />
         </ui:VisualElement>
         <ui:VisualElement class="alley-brand-strip">
             <ui:VisualElement class="alley-strip-seg alley-strip-purple" />
