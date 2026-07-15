@@ -1,0 +1,40 @@
+name: Build Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  packageName: com.legendsnexus.alley-sdk
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        run: echo "value=$(jq -r .version "Packages/$packageName/package.json")" >> "$GITHUB_OUTPUT"
+
+      - name: Create zip
+        working-directory: Packages/${{ env.packageName }}
+        run: zip -r "$GITHUB_WORKSPACE/${{ env.packageName }}-${{ steps.version.outputs.value }}.zip" .
+
+      - name: Checksum
+        id: checksum
+        run: echo "sha256=$(sha256sum "${{ env.packageName }}-${{ steps.version.outputs.value }}.zip" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Make release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.value }}
+          name: ${{ steps.version.outputs.value }}
+          body: |
+            zipSHA256: ${{ steps.checksum.outputs.sha256 }}
+          files: |
+            ${{ env.packageName }}-${{ steps.version.outputs.value }}.zip
+            Packages/${{ env.packageName }}/package.json
