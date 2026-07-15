@@ -24,6 +24,9 @@ namespace LegendsNexus.Alley.Editor
             {
                 duplicate = UnityEngine.Object.Instantiate(booth.gameObject);
                 duplicate.name = safeName;
+                // fork probuilder meshes right away, the copy shares them with the
+                // scene booth until then and destroying it would take them along
+                ProBuilderBaker.MakeMeshesUnique(duplicate);
                 // remember how the scene camera frames the booth before the copy
                 // moves, creators aim Main Camera to pick their own preview shot
                 Pose? previewPose = GetPreviewPose(booth.transform);

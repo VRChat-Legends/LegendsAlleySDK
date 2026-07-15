@@ -42,6 +42,18 @@ namespace LegendsNexus.Alley.Editor
 #endif
         }
 
+        // instantiated probuilder objects share the source mesh until forked, so
+        // destroying a copy would nuke the scene booth's meshes. fork them first
+        public static void MakeMeshesUnique(GameObject root)
+        {
+#if ALLEY_PROBUILDER
+            foreach (ProBuilderMesh pb in root.GetComponentsInChildren<ProBuilderMesh>(true))
+            {
+                try { pb.MakeUnique(); } catch { }
+            }
+#endif
+        }
+
 #if ALLEY_PROBUILDER
         private class Piece
         {
