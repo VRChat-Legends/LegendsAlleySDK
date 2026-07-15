@@ -34,6 +34,8 @@ namespace LegendsNexus.Alley.Editor
                 {
                     AssetDatabase.CreateFolder("Assets", "LegendsAlleyExport");
                 }
+                // probuilder booths get baked into one mesh + one atlased material
+                ProBuilderBaker.Bake(duplicate, ExportFolder, safeName);
                 PrefabUtility.SaveAsPrefabAsset(duplicate, prefabPath);
 
                 AssetDatabase.ExportPackage(
@@ -60,9 +62,10 @@ namespace LegendsNexus.Alley.Editor
             finally
             {
                 if (duplicate != null) UnityEngine.Object.DestroyImmediate(duplicate);
-                if (AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath) != null)
+                // the export folder is scratch space, baked assets live there too
+                if (AssetDatabase.IsValidFolder(ExportFolder))
                 {
-                    AssetDatabase.DeleteAsset(prefabPath);
+                    AssetDatabase.DeleteAsset(ExportFolder);
                 }
                 try { Directory.Delete(stagingDir, true); } catch { }
                 AssetDatabase.Refresh();

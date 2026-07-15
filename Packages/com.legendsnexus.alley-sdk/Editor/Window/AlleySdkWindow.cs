@@ -536,7 +536,8 @@ namespace LegendsNexus.Alley.Editor
                 }
                 _placeBoothDropdown.SetEnabled(choices.Count > 0);
 
-                PopulateStaffCommunities(communities?.communities ?? Array.Empty<StaffCommunity>());
+                StaffCommunityCache.Store(communities?.communities);
+                PopulateStaffCommunities(StaffCommunityCache.Communities);
                 RefreshStaffSummary();
             }
             catch (AlleyApiException e)
@@ -861,7 +862,10 @@ namespace LegendsNexus.Alley.Editor
             string zipPath = null;
             try
             {
-                SetStatus("Building the booth package...");
+                int pbMeshes = ProBuilderBaker.CountMeshes(booth.gameObject);
+                SetStatus(pbMeshes > 0
+                    ? $"ProBuilder detected on booth, optimizations will be done. Baking {pbMeshes} meshes into one..."
+                    : "Building the booth package...");
                 _uploadProgress.value = 0;
                 zipPath = BoothPackager.CreatePackage(booth, _report.Stats, AlleySession.SelectedEvent, AlleySession.Community);
 

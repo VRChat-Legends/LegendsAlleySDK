@@ -6,7 +6,8 @@
         "VRC.SDKBase",
         "VRC.SDK3",
         "VRC.Udon",
-        "Unity.TextMeshPro"
+        "Unity.TextMeshPro",
+        "Unity.ProBuilder"
     ],
     "includePlatforms": [
         "Editor"
@@ -17,6 +18,12 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.probuilder",
+            "expression": "",
+            "define": "ALLEY_PROBUILDER"
+        }
+    ],
     "noEngineReferences": false
 }

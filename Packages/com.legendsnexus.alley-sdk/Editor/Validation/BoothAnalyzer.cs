@@ -17,6 +17,7 @@ namespace LegendsNexus.Alley.Editor
         {
             var report = new BoothReport();
             GameObject root = booth.gameObject;
+            ProBuilderBaker.RebuildMeshes(root);
 
             Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
             MeshFilter[] meshFilters = root.GetComponentsInChildren<MeshFilter>(true);
@@ -43,6 +44,19 @@ namespace LegendsNexus.Alley.Editor
 
             CollectAssetStats(root, stats);
             CollectBlockers(root, report);
+
+            int pbMeshes = ProBuilderBaker.CountMeshes(root);
+            if (pbMeshes > 0)
+            {
+                report.Rows.Add(new CheckRow
+                {
+                    Label = "ProBuilder",
+                    Value = pbMeshes + " meshes",
+                    Limit = "auto-optimized",
+                    Severity = CheckSeverity.Pass,
+                    Hint = "ProBuilder detected on booth, optimizations will be done at upload: meshes combined into one and textures atlased into a single material.",
+                });
+            }
 
             if (limits != null) BuildChecklist(report, limits);
             return report;
