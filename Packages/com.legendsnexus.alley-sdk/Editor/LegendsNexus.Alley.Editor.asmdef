@@ -1,0 +1,22 @@
+{
+    "name": "LegendsNexus.Alley.Editor",
+    "rootNamespace": "LegendsNexus.Alley",
+    "references": [
+        "LegendsNexus.Alley.Runtime",
+        "VRC.SDKBase",
+        "VRC.SDK3",
+        "VRC.Udon",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

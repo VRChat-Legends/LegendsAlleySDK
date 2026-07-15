@@ -1,0 +1,14 @@
+{
+  "name": "com.legendsnexus.alley-sdk",
+  "displayName": "Legends Alley SDK",
+  "version": "1.0.0",
+  "unity": "2022.3",
+  "description": "Build, check, and upload your community booth for Legends Alley events. Sign in with Discord, keep your booth inside the event limits, and ship it straight from Unity.",
+  "author": {
+    "name": "VRChat Legends",
+    "url": "https://vrchatlegends.com"
+  },
+  "vpmDependencies": {
+    "com.vrchat.worlds": ">=3.7.0"
+  }
+}

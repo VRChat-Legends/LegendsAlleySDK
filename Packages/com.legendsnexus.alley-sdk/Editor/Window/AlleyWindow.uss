@@ -1,0 +1,219 @@
+.alley-root {
+    flex-grow: 1;
+    background-color: #0A0A0A;
+}
+
+.alley-header {
+    flex-direction: row;
+    align-items: center;
+    padding: 12px 14px;
+    background-color: #050505;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(138, 43, 226, 0.35);
+}
+
+.alley-logo {
+    width: 36px;
+    height: 36px;
+    margin-right: 10px;
+    border-radius: 18px;
+}
+
+.alley-title {
+    font-size: 15px;
+    -unity-font-style: bold;
+    color: #FFFFFF;
+    letter-spacing: 3px;
+}
+
+.alley-subtitle {
+    font-size: 10px;
+    color: #805AD5;
+    letter-spacing: 1px;
+}
+
+.alley-header-spacer {
+    flex-grow: 1;
+}
+
+.alley-content {
+    flex-grow: 1;
+    padding: 10px;
+}
+
+.alley-card {
+    background-color: #181B1F;
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: rgba(138, 43, 226, 0.2);
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+.alley-card-title {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: #FFFFFF;
+    margin-bottom: 4px;
+}
+
+.alley-section-label {
+    font-size: 11px;
+    color: #6AE3F9;
+    letter-spacing: 2px;
+    -unity-font-style: bold;
+    margin-bottom: 6px;
+}
+
+.alley-body {
+    color: #CCCCCC;
+    white-space: normal;
+    margin-bottom: 8px;
+}
+
+.alley-muted {
+    color: rgba(255, 255, 255, 0.45);
+    white-space: normal;
+    margin-top: 4px;
+}
+
+.alley-button-primary {
+    background-color: #6B46C1;
+    color: #FFFFFF;
+    border-radius: 6px;
+    border-width: 0;
+    padding: 8px 14px;
+    margin-top: 8px;
+    -unity-font-style: bold;
+}
+
+.alley-button-primary:hover {
+    background-color: #805AD5;
+}
+
+.alley-button-primary:disabled {
+    background-color: rgba(107, 70, 193, 0.35);
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.alley-button-secondary {
+    background-color: rgba(31, 209, 237, 0.12);
+    color: #6AE3F9;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: rgba(31, 209, 237, 0.4);
+    padding: 6px 12px;
+    margin-top: 4px;
+}
+
+.alley-button-secondary:hover {
+    background-color: rgba(31, 209, 237, 0.25);
+}
+
+.alley-button-ghost {
+    background-color: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.6);
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.12);
+    padding: 4px 10px;
+}
+
+.alley-button-ghost:hover {
+    color: #FF33A1;
+    border-color: rgba(255, 0, 122, 0.5);
+}
+
+.alley-community-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.alley-community-logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 22px;
+    margin-right: 10px;
+    background-color: #0A0A0A;
+    border-width: 1px;
+    border-color: rgba(138, 43, 226, 0.4);
+}
+
+.alley-checklist {
+    margin-top: 8px;
+}
+
+.alley-check-row {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-bottom: 2px;
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.alley-check-label {
+    color: #CCCCCC;
+}
+
+.alley-check-value {
+    -unity-font-style: bold;
+}
+
+.alley-check-pass .alley-check-value {
+    color: #1FD1ED;
+}
+
+.alley-check-warn .alley-check-value {
+    color: #FFD700;
+}
+
+.alley-check-fail .alley-check-value {
+    color: #FF33A1;
+}
+
+.alley-check-hint {
+    color: #FF33A1;
+    white-space: normal;
+    padding: 0 8px 4px 8px;
+    font-size: 10px;
+}
+
+.alley-blockers {
+    margin-top: 6px;
+}
+
+.alley-blocker-row {
+    color: #FF33A1;
+    white-space: normal;
+    padding: 6px 8px;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    background-color: rgba(255, 0, 122, 0.08);
+    border-width: 1px;
+    border-color: rgba(255, 0, 122, 0.35);
+}
+
+.alley-progress {
+    margin-top: 8px;
+    height: 16px;
+}
+
+.alley-status {
+    padding: 6px 14px;
+    color: rgba(255, 255, 255, 0.6);
+    background-color: #050505;
+    border-top-width: 1px;
+    border-top-color: rgba(138, 43, 226, 0.25);
+    white-space: normal;
+}
+
+.alley-settings {
+    margin-top: 4px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.alley-login-card {
+    margin-top: 30px;
+    align-items: stretch;
+}
