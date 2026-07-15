@@ -139,11 +139,6 @@
     white-space: nowrap;
 }
 
-/* tab pages are animated from code, keeps the editor from eating the transition */
-.alley-page {
-    flex-grow: 1;
-}
-
 .alley-content {
     flex-grow: 1;
     padding: 16px 14px 10px 14px;

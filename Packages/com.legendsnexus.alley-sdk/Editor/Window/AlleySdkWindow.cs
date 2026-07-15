@@ -379,7 +379,8 @@ namespace LegendsNexus.Alley.Editor
 
             if (animate && oldIndex != newIndex)
             {
-                Animate(_tabPages[id], new Vector2(enterFromRight ? 44f : -44f, 0f), Vector2.zero, 0f, 1f, 0.24f);
+                // slide only, the opacity dip read as a flash on the dark theme
+                Animate(_tabPages[id], new Vector2(enterFromRight ? 44f : -44f, 0f), Vector2.zero, 1f, 1f, 0.24f);
             }
 
             if (id == "booth" && AlleySession.IsSignedIn) RefreshBooths();
@@ -574,7 +575,6 @@ namespace LegendsNexus.Alley.Editor
                 }
                 row.Add(text);
 
-                AnimateRow(row, active);
                 _staffCommunities.Add(row);
                 _ = ApplyLogo(logo, community.logoUrl);
                 active++;
