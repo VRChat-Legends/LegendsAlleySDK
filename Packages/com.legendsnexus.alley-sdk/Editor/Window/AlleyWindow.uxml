@@ -47,6 +47,13 @@
                 <ui:ProgressBar name="upload-progress" class="alley-progress" />
             </ui:VisualElement>
 
+            <ui:VisualElement name="staff-card" class="alley-card">
+                <ui:Label text="Staff tools" class="alley-section-label alley-staff-label" />
+                <ui:Label name="staff-plots-summary" text="" class="alley-body" />
+                <ui:Button name="staff-sync-button" text="Sync booths to plots" class="alley-button-primary" />
+                <ui:ScrollView name="staff-log" class="alley-staff-log" />
+            </ui:VisualElement>
+
             <ui:Foldout name="settings-foldout" text="Settings" value="false" class="alley-settings">
                 <ui:TextField name="api-base-field" label="Server" />
                 <ui:Label name="version-label" text="" class="alley-muted" />

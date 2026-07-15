@@ -10,6 +10,7 @@ namespace LegendsNexus.Alley.Editor
     internal static class AlleySession
     {
         public static CommunityInfo Community { get; private set; }
+        public static bool IsStaff { get; private set; }
         public static AlleyEvent[] Events { get; private set; } = Array.Empty<AlleyEvent>();
         public static AlleyEvent SelectedEvent { get; set; }
         public static bool IsSignedIn => !string.IsNullOrEmpty(_token);
@@ -45,6 +46,7 @@ namespace LegendsNexus.Alley.Editor
                 if (!string.Equals(saved.apiBase, AlleyConfig.ApiBase, StringComparison.OrdinalIgnoreCase)) return;
                 _token = saved.token;
                 Community = saved.community;
+                IsStaff = saved.staff;
             }
             catch
             {
@@ -60,7 +62,8 @@ namespace LegendsNexus.Alley.Editor
             try
             {
                 MeResponse me = await AlleyHttp.GetJson<MeResponse>("/api/auth/me", _token);
-                Community = me.community;
+                Community = me.community != null && !string.IsNullOrEmpty(me.community.id) ? me.community : null;
+                IsStaff = me.staff;
                 Save();
                 await RefreshEvents();
                 Changed?.Invoke();
@@ -77,7 +80,8 @@ namespace LegendsNexus.Alley.Editor
         {
             ExchangeResponse result = await AlleyAuth.SignIn(cancel);
             _token = result.token;
-            Community = result.community;
+            Community = result.community != null && !string.IsNullOrEmpty(result.community.id) ? result.community : null;
+            IsStaff = result.staff;
             _loaded = true;
             Save();
             await RefreshEvents();
@@ -88,7 +92,8 @@ namespace LegendsNexus.Alley.Editor
         {
             try
             {
-                if (IsSignedIn) await AlleyHttp.PostJson<object>("/api/auth/revoke", null, _token);
+                // staff only tokens have nothing to revoke server side
+                if (IsSignedIn && Community != null) await AlleyHttp.PostJson<object>("/api/auth/revoke", null, _token);
             }
             catch
             {
@@ -124,6 +129,7 @@ namespace LegendsNexus.Alley.Editor
         {
             _token = null;
             Community = null;
+            IsStaff = false;
             Events = Array.Empty<AlleyEvent>();
             SelectedEvent = null;
             try
@@ -142,7 +148,7 @@ namespace LegendsNexus.Alley.Editor
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(SessionPath));
-                var file = new SessionFile { token = _token, community = Community, apiBase = AlleyConfig.ApiBase };
+                var file = new SessionFile { token = _token, community = Community, apiBase = AlleyConfig.ApiBase, staff = IsStaff };
                 File.WriteAllText(SessionPath, JsonUtility.ToJson(file));
             }
             catch (Exception e)

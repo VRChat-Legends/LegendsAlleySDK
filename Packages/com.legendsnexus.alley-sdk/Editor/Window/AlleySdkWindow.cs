@@ -42,15 +42,21 @@ namespace LegendsNexus.Alley.Editor
         private BoothReport _report;
         private CancellationTokenSource _loginCancel;
         private bool _busy;
+        private VisualElement _staffCard;
+        private Button _staffSyncButton;
+        private Label _staffPlotsSummary;
+        private ScrollView _staffLog;
 
         private void OnEnable()
         {
             AlleySession.Changed += OnSessionChanged;
+            BoothImporter.Log += OnImporterLog;
         }
 
         private void OnDisable()
         {
             AlleySession.Changed -= OnSessionChanged;
+            BoothImporter.Log -= OnImporterLog;
             _loginCancel?.Cancel();
         }
 
@@ -78,6 +84,10 @@ namespace LegendsNexus.Alley.Editor
             _checklist = rootVisualElement.Q("checklist");
             _blockers = rootVisualElement.Q("blockers");
             _uploadProgress = rootVisualElement.Q<ProgressBar>("upload-progress");
+            _staffCard = rootVisualElement.Q("staff-card");
+            _staffSyncButton = rootVisualElement.Q<Button>("staff-sync-button");
+            _staffPlotsSummary = rootVisualElement.Q<Label>("staff-plots-summary");
+            _staffLog = rootVisualElement.Q<ScrollView>("staff-log");
 
             LoadHeaderLogo();
 
@@ -86,6 +96,7 @@ namespace LegendsNexus.Alley.Editor
             _signOutButton.clicked += StartSignOut;
             _checkButton.clicked += RunCheck;
             _uploadButton.clicked += StartUpload;
+            _staffSyncButton.clicked += StartStaffSync;
             _eventDropdown.RegisterValueChangedCallback(_ => OnEventPicked());
             _boothDropdown.RegisterValueChangedCallback(_ => RunCheck());
 
@@ -162,19 +173,27 @@ namespace LegendsNexus.Alley.Editor
         private void RefreshUi()
         {
             bool signedIn = AlleySession.IsSignedIn;
+            bool hasCommunity = signedIn && AlleySession.Community != null;
+            bool isStaff = signedIn && AlleySession.IsStaff;
             _loginCard.style.display = signedIn ? DisplayStyle.None : DisplayStyle.Flex;
-            _communityCard.style.display = signedIn ? DisplayStyle.Flex : DisplayStyle.None;
+            _communityCard.style.display = hasCommunity ? DisplayStyle.Flex : DisplayStyle.None;
             _eventCard.style.display = signedIn ? DisplayStyle.Flex : DisplayStyle.None;
-            _boothCard.style.display = signedIn ? DisplayStyle.Flex : DisplayStyle.None;
+            _boothCard.style.display = hasCommunity ? DisplayStyle.Flex : DisplayStyle.None;
+            _staffCard.style.display = isStaff ? DisplayStyle.Flex : DisplayStyle.None;
             _signOutButton.style.display = signedIn ? DisplayStyle.Flex : DisplayStyle.None;
             _loginCancelButton.style.display = DisplayStyle.None;
             _uploadProgress.style.display = DisplayStyle.None;
 
             if (!signedIn) return;
 
-            rootVisualElement.Q<Label>("community-name").text = AlleySession.Community?.name ?? "";
-            rootVisualElement.Q<Label>("community-owner").text = "Owner: " + (AlleySession.Community?.ownerUsername ?? "");
-            _ = LoadCommunityLogo();
+            if (hasCommunity)
+            {
+                rootVisualElement.Q<Label>("community-name").text = AlleySession.Community?.name ?? "";
+                rootVisualElement.Q<Label>("community-owner").text = "Owner: " + (AlleySession.Community?.ownerUsername ?? "");
+                _ = LoadCommunityLogo();
+            }
+
+            if (isStaff) RefreshStaffSummary();
 
             var names = new List<string>();
             foreach (AlleyEvent alleyEvent in AlleySession.Events) names.Add(alleyEvent.name);
@@ -193,6 +212,56 @@ namespace LegendsNexus.Alley.Editor
             }
 
             RefreshBooths();
+        }
+
+        private void RefreshStaffSummary()
+        {
+            BoothLocation[] locations = BoothImporter.FindLocations();
+            int filled = 0;
+            int locked = 0;
+            foreach (BoothLocation location in locations)
+            {
+                if (location.HasBooth) filled++;
+                if (location.locked) locked++;
+            }
+            _staffPlotsSummary.text = locations.Length == 0
+                ? "No Booth Location plots in the open scene. Add the Booth Location component where booths should go."
+                : $"{locations.Length} plot(s): {filled} filled, {locations.Length - filled} free, {locked} locked.";
+            _staffSyncButton.SetEnabled(!BoothImporter.IsRunning && AlleySession.SelectedEvent != null && locations.Length > 0);
+        }
+
+        private async void StartStaffSync()
+        {
+            if (BoothImporter.IsRunning || AlleySession.SelectedEvent == null) return;
+            _staffSyncButton.SetEnabled(false);
+            _staffLog.Clear();
+            try
+            {
+                await BoothImporter.Sync(AlleySession.SelectedEvent);
+            }
+            catch (AlleyApiException e)
+            {
+                OnImporterLog("Sync failed: " + e.Message);
+            }
+            catch (Exception e)
+            {
+                OnImporterLog("Sync failed: " + e.Message);
+                Debug.LogException(e);
+            }
+            finally
+            {
+                if (this != null) RefreshStaffSummary();
+            }
+        }
+
+        private void OnImporterLog(string message)
+        {
+            if (this == null || _staffLog == null) return;
+            var line = new Label(message);
+            line.AddToClassList("alley-staff-log-line");
+            _staffLog.Add(line);
+            _staffLog.schedule.Execute(() => _staffLog.scrollOffset = new Vector2(0, float.MaxValue));
+            RefreshStaffSummary();
         }
 
         private void OnEventPicked()

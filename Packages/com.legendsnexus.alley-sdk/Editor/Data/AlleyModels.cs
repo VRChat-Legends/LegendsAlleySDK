@@ -77,12 +77,37 @@ namespace LegendsNexus.Alley.Editor
     {
         public string token;
         public CommunityInfo community;
+        public bool staff;
     }
 
     [Serializable]
     public class MeResponse
     {
         public CommunityInfo community;
+        public bool staff;
+    }
+
+    [Serializable]
+    public class StaffBooth
+    {
+        public string id;
+        public string eventId;
+        public string communityId;
+        public string communityName;
+        public string communitySlug;
+        public int version;
+        public string status;
+        public long fileSize;
+        public string sha256;
+        public string prefabName;
+        public string downloadUrl;
+        public string uploadedAt;
+    }
+
+    [Serializable]
+    public class StaffBoothsResponse
+    {
+        public StaffBooth[] booths;
     }
 
     [Serializable]
@@ -163,5 +188,6 @@ namespace LegendsNexus.Alley.Editor
         public string token;
         public CommunityInfo community;
         public string apiBase;
+        public bool staff;
     }
 }

@@ -24,7 +24,10 @@ namespace LegendsNexus.Alley.Editor
             {
                 duplicate = UnityEngine.Object.Instantiate(booth.gameObject);
                 duplicate.name = safeName;
-                duplicate.transform.position = new Vector3(0f, booth.transform.position.y, 0f);
+                // canonical pose so the plot's own transform decides where the booth
+                // sits and which way the front faces at import time
+                duplicate.transform.position = Vector3.zero;
+                duplicate.transform.rotation = Quaternion.identity;
                 PrepareForEvent(duplicate);
 
                 if (!AssetDatabase.IsValidFolder(ExportFolder))

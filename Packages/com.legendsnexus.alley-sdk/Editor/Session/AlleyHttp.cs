@@ -57,6 +57,26 @@ namespace LegendsNexus.Alley.Editor
             return await Send<ChunkResponse>(request);
         }
 
+        public static async Task<byte[]> GetBytes(string path, string token)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, AlleyConfig.ApiBase + path);
+            Authorize(request, token);
+            HttpResponseMessage response;
+            try
+            {
+                response = await Client.SendAsync(request);
+            }
+            catch (Exception e) when (e is HttpRequestException || e is TaskCanceledException)
+            {
+                throw new AlleyApiException(0, "Could not reach the Legends Alley server. Check your connection and try again.");
+            }
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new AlleyApiException((int)response.StatusCode, $"Download failed ({(int)response.StatusCode}).");
+            }
+            return await response.Content.ReadAsByteArrayAsync();
+        }
+
         private static void Authorize(HttpRequestMessage request, string token)
         {
             if (!string.IsNullOrEmpty(token))

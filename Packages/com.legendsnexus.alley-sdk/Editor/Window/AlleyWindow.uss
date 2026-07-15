@@ -217,3 +217,22 @@
     margin-top: 30px;
     align-items: stretch;
 }
+
+.alley-staff-label {
+    color: #FFD700;
+}
+
+.alley-staff-log {
+    max-height: 180px;
+    margin-top: 8px;
+    background-color: rgba(0, 0, 0, 0.35);
+    border-radius: 6px;
+    padding: 6px;
+}
+
+.alley-staff-log-line {
+    color: rgba(255, 255, 255, 0.7);
+    white-space: normal;
+    font-size: 11px;
+    margin-bottom: 2px;
+}
