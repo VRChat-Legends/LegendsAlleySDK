@@ -133,6 +133,15 @@ namespace LegendsNexus.Alley.Editor
             Changed?.Invoke();
         }
 
+        public static void SetCommunityProfile(string description, string inviteUrl)
+        {
+            if (Community == null) return;
+            Community.description = description;
+            Community.inviteUrl = inviteUrl;
+            Save();
+            Changed?.Invoke();
+        }
+
         private static void ClearLocal()
         {
             _token = null;

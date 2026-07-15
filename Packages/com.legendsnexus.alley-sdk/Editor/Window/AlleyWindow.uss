@@ -532,3 +532,89 @@
     transition-duration: 0.16s;
     transition-timing-function: ease-out-cubic;
 }
+
+/* profile editor bits */
+.alley-field-label {
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 2px;
+    -unity-font-style: bold;
+    margin: 8px 0 3px 0;
+}
+
+.alley-description-field .unity-base-text-field__input {
+    min-height: 72px;
+    white-space: normal;
+    -unity-text-align: upper-left;
+}
+
+.alley-count {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 9px;
+    -unity-text-align: middle-right;
+    margin-top: 2px;
+}
+
+/* staff community roster */
+.alley-community-list {
+    max-height: 190px;
+    margin-top: 4px;
+}
+
+.alley-community-item {
+    flex-direction: row;
+    align-items: center;
+    padding: 6px 8px;
+    margin-bottom: 4px;
+    background-color: #0E1013;
+    border-left-width: 3px;
+    border-left-color: #FFD700;
+    transition-property: opacity, translate;
+    transition-duration: 0.16s;
+    transition-timing-function: ease-out-cubic;
+}
+
+.alley-community-item-logo {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    margin-right: 8px;
+    background-color: #0A0A0A;
+    border-width: 1px;
+    border-color: #2A2D33;
+}
+
+.alley-community-item-text {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.alley-community-item-name {
+    -unity-font-style: bold;
+    color: #FFFFFF;
+    font-size: 11px;
+}
+
+.alley-community-item-desc {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* placement action row */
+.alley-staff-actions {
+    flex-direction: row;
+    align-items: flex-end;
+}
+
+.alley-grow {
+    flex-grow: 1;
+}
+
+.alley-randomize {
+    margin-left: 10px;
+    margin-bottom: 3px;
+    align-self: flex-end;
+}

@@ -78,15 +78,47 @@
                         <ui:Button name="logo-button" text="CHANGE LOGO" class="alley-button-ghost alley-logo-button" />
                     </ui:VisualElement>
                 </ui:VisualElement>
+                <ui:VisualElement class="alley-card-shadow alley-card-shadow-purple">
+                    <ui:VisualElement class="alley-card alley-card-purple">
+                        <ui:Label text="PROFILE" class="alley-section-label alley-label-purple" />
+                        <ui:Label class="alley-body"
+                            text="Tell everyone what your community is about. This shows to event staff and on the website." />
+                        <ui:Label text="DESCRIPTION" class="alley-field-label" />
+                        <ui:TextField name="community-description" multiline="true" class="alley-description-field" />
+                        <ui:Label name="description-count" text="" class="alley-count" />
+                        <ui:Label text="DISCORD INVITE" class="alley-field-label" />
+                        <ui:TextField name="community-invite" />
+                        <ui:VisualElement class="alley-shadow alley-shadow-teal">
+                            <ui:Button name="profile-save-button" text="SAVE PROFILE" class="alley-button-secondary" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
             </ui:VisualElement>
 
             <ui:VisualElement name="page-staff" class="alley-page">
                 <ui:VisualElement class="alley-card-shadow alley-card-shadow-gold">
                     <ui:VisualElement class="alley-card alley-card-gold">
-                        <ui:Label text="STAFF TOOLS" class="alley-section-label alley-label-gold" />
+                        <ui:Label text="COMMUNITIES" class="alley-section-label alley-label-gold" />
+                        <ui:Label name="staff-communities-summary" text="" class="alley-body" />
+                        <ui:ScrollView name="staff-communities" class="alley-community-list" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement class="alley-card-shadow alley-card-shadow-gold">
+                    <ui:VisualElement class="alley-card alley-card-gold">
+                        <ui:Label text="BOOTH PLACEMENT" class="alley-section-label alley-label-gold" />
                         <ui:Label name="staff-plots-summary" text="" class="alley-body" />
-                        <ui:VisualElement class="alley-shadow alley-shadow-purple">
-                            <ui:Button name="staff-sync-button" text="SYNC BOOTHS TO PLOTS" class="alley-button-primary alley-button-staff" />
+                        <ui:Label text="BOOTH" class="alley-field-label" />
+                        <ui:DropdownField name="place-booth-dropdown" />
+                        <ui:Label text="PLOT" class="alley-field-label" />
+                        <ui:DropdownField name="place-plot-dropdown" />
+                        <ui:VisualElement class="alley-shadow alley-shadow-teal">
+                            <ui:Button name="place-button" text="PLACE BOOTH" class="alley-button-secondary" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="alley-staff-actions">
+                            <ui:VisualElement class="alley-shadow alley-shadow-purple alley-grow">
+                                <ui:Button name="staff-sync-button" text="SYNC ALL" class="alley-button-primary alley-button-staff" />
+                            </ui:VisualElement>
+                            <ui:Button name="randomize-button" text="RANDOMIZE" class="alley-button-ghost alley-randomize" />
                         </ui:VisualElement>
                         <ui:ScrollView name="staff-log" class="alley-staff-log" />
                     </ui:VisualElement>

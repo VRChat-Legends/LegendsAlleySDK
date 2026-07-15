@@ -66,6 +66,14 @@ namespace LegendsNexus.Alley.Editor
             return await Send<T>(request);
         }
 
+        public static async Task<T> PatchJson<T>(string path, object body, string token)
+        {
+            using var request = new HttpRequestMessage(new HttpMethod("PATCH"), AlleyConfig.ApiBase + path);
+            Authorize(request, token);
+            request.Content = new StringContent(JsonUtility.ToJson(body), Encoding.UTF8, "application/json");
+            return await Send<T>(request);
+        }
+
         public static async Task<byte[]> GetBytes(string path, string token)
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, AlleyConfig.ApiBase + path);

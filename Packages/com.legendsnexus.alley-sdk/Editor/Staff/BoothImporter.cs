@@ -39,84 +39,179 @@ namespace LegendsNexus.Alley.Editor
             }
         }
 
+        public static async Task<StaffBooth[]> FetchBooths(AlleyEvent alleyEvent)
+        {
+            var response = await AlleyHttp.GetJson<StaffBoothsResponse>(
+                $"/api/admin/booths?eventId={Uri.EscapeDataString(alleyEvent.id)}&status=active", AlleySession.Token);
+            return response?.booths ?? Array.Empty<StaffBooth>();
+        }
+
         public static async Task Sync(AlleyEvent alleyEvent)
         {
             if (IsRunning) return;
             IsRunning = true;
             try
             {
-                var response = await AlleyHttp.GetJson<StaffBoothsResponse>(
-                    $"/api/admin/booths?eventId={Uri.EscapeDataString(alleyEvent.id)}&status=active", AlleySession.Token);
-                StaffBooth[] booths = response?.booths ?? Array.Empty<StaffBooth>();
+                StaffBooth[] booths = await FetchBooths(alleyEvent);
                 BoothLocation[] locations = FindLocations();
 
                 Log($"Found {booths.Length} uploaded booth(s) and {locations.Length} plot(s) in the scene.");
 
-                var queue = ImportQueue.Load();
-                queue.items.Clear();
-                queue.importedCount = 0;
-                queue.updatedCount = 0;
-                queue.skippedCount = 0;
-
                 List<(BoothLocation location, StaffBooth booth)> plan = BuildPlan(booths, locations);
-
-                foreach ((BoothLocation location, StaffBooth booth) in plan)
-                {
-                    if (location.placedSha256 == booth.sha256 && location.HasBooth)
-                    {
-                        queue.skippedCount++;
-                        continue;
-                    }
-
-                    bool isUpdate = location.placedCommunityId == booth.communityId && location.HasBooth;
-                    Log($"{(isUpdate ? "Updating" : "Placing")} {booth.communityName} v{booth.version} on plot {location.PlotLabel}...");
-
-                    string packagePath;
-                    try
-                    {
-                        packagePath = await DownloadAndExtract(booth);
-                    }
-                    catch (Exception e)
-                    {
-                        Log($"Download failed for {booth.communityName}: {e.Message}");
-                        continue;
-                    }
-
-                    if (isUpdate) queue.updatedCount++;
-                    else queue.importedCount++;
-
-                    queue.items.Add(new ImportItem
-                    {
-                        boothId = booth.id,
-                        communityId = booth.communityId,
-                        communityName = booth.communityName,
-                        prefabName = SanitizeName(booth.prefabName),
-                        sha256 = booth.sha256,
-                        version = booth.version,
-                        locationPath = ScenePath(location.transform),
-                        packagePath = packagePath,
-                        stage = "pending",
-                    });
-                }
-
                 ReportLeftovers(booths, locations, plan);
-                ImportQueue.Save(queue);
-
-                if (queue.items.Count == 0)
-                {
-                    Log($"Everything is up to date. Skipped {queue.skippedCount} plot(s).");
-                    ImportQueue.Clear();
-                    IsRunning = false;
-                    return;
-                }
-
-                ProcessNext();
+                await QueueAndRun(plan, true);
             }
             catch (Exception)
             {
                 IsRunning = false;
                 throw;
             }
+        }
+
+        // drop one booth on one plot, clearing any other plot that held that community
+        public static async Task PlaceSingle(StaffBooth booth, BoothLocation location)
+        {
+            if (IsRunning || booth == null || location == null) return;
+            if (location.locked)
+            {
+                Log($"Plot {location.PlotLabel} is locked, unlock it first.");
+                return;
+            }
+            IsRunning = true;
+            try
+            {
+                foreach (BoothLocation other in FindLocations())
+                {
+                    if (other == location || other.placedCommunityId != booth.communityId) continue;
+                    ClearPlot(other);
+                    Log($"Cleared {booth.communityName} off plot {other.PlotLabel}.");
+                }
+                await QueueAndRun(new List<(BoothLocation, StaffBooth)> { (location, booth) }, true);
+            }
+            catch (Exception)
+            {
+                IsRunning = false;
+                throw;
+            }
+        }
+
+        // wipes every unlocked plot and deals the booths back out in random order
+        public static async Task Randomize(AlleyEvent alleyEvent)
+        {
+            if (IsRunning) return;
+            IsRunning = true;
+            try
+            {
+                StaffBooth[] booths = await FetchBooths(alleyEvent);
+                var open = FindLocations().Where(l => !l.locked).ToList();
+                Log($"Shuffling {booths.Length} booth(s) across {open.Count} unlocked plot(s)...");
+
+                foreach (BoothLocation location in open) ClearPlot(location);
+
+                var plan = new List<(BoothLocation, StaffBooth)>();
+                var pool = booths.ToList();
+                var rng = new System.Random();
+
+                // reservations still win their plots
+                foreach (BoothLocation location in open.ToArray())
+                {
+                    if (string.IsNullOrEmpty(location.reservedFor)) continue;
+                    StaffBooth reserved = pool.FirstOrDefault(
+                        b => string.Equals(b.communitySlug, location.reservedFor.Trim(), StringComparison.OrdinalIgnoreCase));
+                    if (reserved == null) continue;
+                    plan.Add((location, reserved));
+                    pool.Remove(reserved);
+                    open.Remove(location);
+                }
+
+                List<BoothLocation> freeSlots = open.Where(l => string.IsNullOrEmpty(l.reservedFor)).OrderBy(_ => rng.Next()).ToList();
+                List<StaffBooth> shuffled = pool.OrderBy(_ => rng.Next()).ToList();
+                for (int i = 0; i < shuffled.Count && i < freeSlots.Count; i++)
+                {
+                    plan.Add((freeSlots[i], shuffled[i]));
+                }
+                if (shuffled.Count > freeSlots.Count)
+                {
+                    Log($"{shuffled.Count - freeSlots.Count} booth(s) have no free plot after the shuffle.");
+                }
+
+                await QueueAndRun(plan, false);
+            }
+            catch (Exception)
+            {
+                IsRunning = false;
+                throw;
+            }
+        }
+
+        private static async Task QueueAndRun(List<(BoothLocation location, StaffBooth booth)> plan, bool skipUpToDate)
+        {
+            var queue = ImportQueue.Load();
+            queue.items.Clear();
+            queue.importedCount = 0;
+            queue.updatedCount = 0;
+            queue.skippedCount = 0;
+
+            foreach ((BoothLocation location, StaffBooth booth) in plan)
+            {
+                if (skipUpToDate && location.placedSha256 == booth.sha256 && location.HasBooth)
+                {
+                    queue.skippedCount++;
+                    continue;
+                }
+
+                bool isUpdate = location.placedCommunityId == booth.communityId && location.HasBooth;
+                Log($"{(isUpdate ? "Updating" : "Placing")} {booth.communityName} v{booth.version} on plot {location.PlotLabel}...");
+
+                string packagePath;
+                try
+                {
+                    packagePath = await DownloadAndExtract(booth);
+                }
+                catch (Exception e)
+                {
+                    Log($"Download failed for {booth.communityName}: {e.Message}");
+                    continue;
+                }
+
+                if (isUpdate) queue.updatedCount++;
+                else queue.importedCount++;
+
+                queue.items.Add(new ImportItem
+                {
+                    boothId = booth.id,
+                    communityId = booth.communityId,
+                    communityName = booth.communityName,
+                    prefabName = SanitizeName(booth.prefabName),
+                    sha256 = booth.sha256,
+                    version = booth.version,
+                    locationPath = ScenePath(location.transform),
+                    packagePath = packagePath,
+                    stage = "pending",
+                });
+            }
+
+            ImportQueue.Save(queue);
+
+            if (queue.items.Count == 0)
+            {
+                Log($"Everything is up to date. Skipped {queue.skippedCount} plot(s).");
+                ImportQueue.Clear();
+                IsRunning = false;
+                return;
+            }
+
+            ProcessNext();
+        }
+
+        private static void ClearPlot(BoothLocation location)
+        {
+            for (int i = location.transform.childCount - 1; i >= 0; i--)
+            {
+                UnityEngine.Object.DestroyImmediate(location.transform.GetChild(i).gameObject);
+            }
+            location.ClearPlacement();
+            EditorSceneManager.MarkSceneDirty(location.gameObject.scene);
         }
 
         private static List<(BoothLocation, StaffBooth)> BuildPlan(StaffBooth[] booths, BoothLocation[] locations)

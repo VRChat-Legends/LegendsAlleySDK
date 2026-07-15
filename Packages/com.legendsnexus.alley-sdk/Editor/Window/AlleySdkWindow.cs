@@ -46,6 +46,19 @@ namespace LegendsNexus.Alley.Editor
         private Button _staffSyncButton;
         private Label _staffPlotsSummary;
         private ScrollView _staffLog;
+        private TextField _communityDescription;
+        private TextField _communityInvite;
+        private Button _profileSaveButton;
+        private Label _descriptionCount;
+        private ScrollView _staffCommunities;
+        private Label _staffCommunitiesSummary;
+        private DropdownField _placeBoothDropdown;
+        private DropdownField _placePlotDropdown;
+        private Button _placeButton;
+        private Button _randomizeButton;
+        private StaffBooth[] _staffBooths = Array.Empty<StaffBooth>();
+        private BoothLocation[] _placePlots = Array.Empty<BoothLocation>();
+        private static readonly Dictionary<string, Texture2D> LogoCache = new Dictionary<string, Texture2D>();
         private VisualElement _checkWrap;
         private VisualElement _uploadWrap;
         private VisualElement _ticker;
@@ -95,6 +108,16 @@ namespace LegendsNexus.Alley.Editor
             _statusBar = rootVisualElement.Q("status-bar");
             _logoButton = rootVisualElement.Q<Button>("logo-button");
             _eventStrip = rootVisualElement.Q("event-strip");
+            _communityDescription = rootVisualElement.Q<TextField>("community-description");
+            _communityInvite = rootVisualElement.Q<TextField>("community-invite");
+            _profileSaveButton = rootVisualElement.Q<Button>("profile-save-button");
+            _descriptionCount = rootVisualElement.Q<Label>("description-count");
+            _staffCommunities = rootVisualElement.Q<ScrollView>("staff-communities");
+            _staffCommunitiesSummary = rootVisualElement.Q<Label>("staff-communities-summary");
+            _placeBoothDropdown = rootVisualElement.Q<DropdownField>("place-booth-dropdown");
+            _placePlotDropdown = rootVisualElement.Q<DropdownField>("place-plot-dropdown");
+            _placeButton = rootVisualElement.Q<Button>("place-button");
+            _randomizeButton = rootVisualElement.Q<Button>("randomize-button");
 
             _tabButtons = new Dictionary<string, Button>();
             _tabPages = new Dictionary<string, VisualElement>();
@@ -118,6 +141,17 @@ namespace LegendsNexus.Alley.Editor
             _uploadButton.clicked += StartUpload;
             _staffSyncButton.clicked += StartStaffSync;
             _logoButton.clicked += StartLogoUpload;
+            _profileSaveButton.clicked += StartProfileSave;
+            _placeButton.clicked += StartManualPlace;
+            _randomizeButton.clicked += StartRandomize;
+            _communityDescription.RegisterValueChangedCallback(evt =>
+            {
+                if (evt.newValue != null && evt.newValue.Length > 500)
+                {
+                    _communityDescription.SetValueWithoutNotify(evt.newValue.Substring(0, 500));
+                }
+                _descriptionCount.text = $"{_communityDescription.value?.Length ?? 0} / 500";
+            });
             _eventDropdown.RegisterValueChangedCallback(_ => OnEventPicked());
             _boothDropdown.RegisterValueChangedCallback(_ => RunCheck());
 
@@ -286,6 +320,9 @@ namespace LegendsNexus.Alley.Editor
             {
                 rootVisualElement.Q<Label>("community-name").text = AlleySession.Community?.name ?? "";
                 rootVisualElement.Q<Label>("community-owner").text = "Owner: " + (AlleySession.Community?.ownerUsername ?? "");
+                _communityDescription.SetValueWithoutNotify(AlleySession.Community?.description ?? "");
+                _communityInvite.SetValueWithoutNotify(AlleySession.Community?.inviteUrl ?? "");
+                _descriptionCount.text = $"{(AlleySession.Community?.description ?? "").Length} / 500";
                 _ = LoadCommunityLogo();
             }
 
@@ -336,7 +373,11 @@ namespace LegendsNexus.Alley.Editor
             }
 
             if (id == "booth" && AlleySession.IsSignedIn) RefreshBooths();
-            if (id == "staff" && AlleySession.IsSignedIn) RefreshStaffSummary();
+            if (id == "staff" && AlleySession.IsSignedIn)
+            {
+                RefreshStaffSummary();
+                _ = RefreshStaffData();
+            }
         }
 
         private static void AnimateRow(VisualElement row, int index)
@@ -380,26 +421,177 @@ namespace LegendsNexus.Alley.Editor
             _staffPlotsSummary.text = locations.Length == 0
                 ? "No Booth Location plots in the open scene. Add the Booth Location component where booths should go."
                 : $"{locations.Length} plot(s): {filled} filled, {locations.Length - filled} free, {locked} locked.";
-            _staffSyncButton.SetEnabled(!BoothImporter.IsRunning && AlleySession.SelectedEvent != null && locations.Length > 0);
+
+            var open = new List<BoothLocation>();
+            var plotChoices = new List<string>();
+            foreach (BoothLocation location in locations)
+            {
+                if (location.locked) continue;
+                open.Add(location);
+                plotChoices.Add(location.HasBooth
+                    ? $"{location.PlotLabel} ({location.placedCommunityName})"
+                    : $"{location.PlotLabel} (free)");
+            }
+            _placePlots = open.ToArray();
+            _placePlotDropdown.choices = plotChoices;
+            if (plotChoices.Count > 0 && (_placePlotDropdown.index < 0 || _placePlotDropdown.index >= plotChoices.Count))
+            {
+                _placePlotDropdown.index = 0;
+            }
+            _placePlotDropdown.SetEnabled(plotChoices.Count > 0);
+
+            bool ready = !BoothImporter.IsRunning && AlleySession.SelectedEvent != null;
+            _staffSyncButton.SetEnabled(ready && locations.Length > 0);
+            _randomizeButton.SetEnabled(ready && open.Count > 0);
+            _placeButton.SetEnabled(ready && open.Count > 0 && _staffBooths.Length > 0);
+        }
+
+        // pulls the roster and booth list for the staff tab
+        private async Task RefreshStaffData()
+        {
+            if (!AlleySession.IsStaff || AlleySession.SelectedEvent == null) return;
+            try
+            {
+                StaffBooth[] booths = await BoothImporter.FetchBooths(AlleySession.SelectedEvent);
+                StaffCommunitiesResponse communities = await AlleyHttp.GetJson<StaffCommunitiesResponse>("/api/admin/communities", AlleySession.Token);
+                if (this == null) return;
+
+                _staffBooths = booths;
+                var choices = new List<string>();
+                foreach (StaffBooth booth in booths) choices.Add($"{booth.communityName} v{booth.version}");
+                _placeBoothDropdown.choices = choices;
+                if (choices.Count > 0 && (_placeBoothDropdown.index < 0 || _placeBoothDropdown.index >= choices.Count))
+                {
+                    _placeBoothDropdown.index = 0;
+                }
+                _placeBoothDropdown.SetEnabled(choices.Count > 0);
+
+                PopulateStaffCommunities(communities?.communities ?? Array.Empty<StaffCommunity>());
+                RefreshStaffSummary();
+            }
+            catch (AlleyApiException e)
+            {
+                SetStatus(e.Message);
+            }
+        }
+
+        private void PopulateStaffCommunities(StaffCommunity[] list)
+        {
+            _staffCommunities.Clear();
+            int active = 0;
+            foreach (StaffCommunity community in list)
+            {
+                if (!community.active) continue;
+                var row = new VisualElement();
+                row.AddToClassList("alley-community-item");
+
+                var logo = new VisualElement();
+                logo.AddToClassList("alley-community-item-logo");
+                row.Add(logo);
+
+                var text = new VisualElement();
+                text.AddToClassList("alley-community-item-text");
+                var nameLabel = new Label(community.name);
+                nameLabel.AddToClassList("alley-community-item-name");
+                text.Add(nameLabel);
+
+                string desc = community.description ?? "";
+                if (desc.Length > 90) desc = desc.Substring(0, 90) + "...";
+                if (desc.Length > 0)
+                {
+                    var descLabel = new Label(desc);
+                    descLabel.AddToClassList("alley-community-item-desc");
+                    text.Add(descLabel);
+                }
+                row.Add(text);
+
+                AnimateRow(row, active);
+                _staffCommunities.Add(row);
+                _ = ApplyLogo(logo, community.logoUrl);
+                active++;
+            }
+            _staffCommunitiesSummary.text = active == 0
+                ? "No accepted communities yet."
+                : $"{active} accepted communit{(active == 1 ? "y" : "ies")}.";
+        }
+
+        private static async Task ApplyLogo(VisualElement element, string url)
+        {
+            Texture2D texture = await FetchLogo(url);
+            if (texture != null && element != null) element.style.backgroundImage = texture;
+        }
+
+        private static async Task<Texture2D> FetchLogo(string url)
+        {
+            if (string.IsNullOrEmpty(url)) return null;
+            bool localDev = url.StartsWith("http://localhost") || url.StartsWith("http://127.0.0.1");
+            if (!url.StartsWith("https://") && !localDev) return null;
+            if (LogoCache.TryGetValue(url, out Texture2D cached) && cached != null) return cached;
+            try
+            {
+                using var client = new HttpClient();
+                byte[] bytes = await client.GetByteArrayAsync(url);
+                var texture = new Texture2D(2, 2);
+                if (!texture.LoadImage(bytes)) return null;
+                LogoCache[url] = texture;
+                return texture;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private async void StartStaffSync()
         {
             if (BoothImporter.IsRunning || AlleySession.SelectedEvent == null) return;
-            _staffSyncButton.SetEnabled(false);
             _staffLog.Clear();
+            await RunStaffOp(() => BoothImporter.Sync(AlleySession.SelectedEvent));
+        }
+
+        private async void StartManualPlace()
+        {
+            if (BoothImporter.IsRunning || AlleySession.SelectedEvent == null) return;
+            int boothIndex = _placeBoothDropdown.index;
+            int plotIndex = _placePlotDropdown.index;
+            if (boothIndex < 0 || boothIndex >= _staffBooths.Length) return;
+            if (plotIndex < 0 || plotIndex >= _placePlots.Length) return;
+            StaffBooth booth = _staffBooths[boothIndex];
+            BoothLocation plot = _placePlots[plotIndex];
+            await RunStaffOp(() => BoothImporter.PlaceSingle(booth, plot));
+        }
+
+        private async void StartRandomize()
+        {
+            if (BoothImporter.IsRunning || AlleySession.SelectedEvent == null) return;
+            bool confirmed = EditorUtility.DisplayDialog(
+                "Shuffle all booths?",
+                "This clears every unlocked plot and re-places all uploaded booths in a random order. " +
+                "Locked plots stay put and reserved plots keep their reservations.\n\n" +
+                "Everything gets downloaded again, so it can take a while.",
+                "Shuffle it", "Cancel");
+            if (!confirmed) return;
+            _staffLog.Clear();
+            await RunStaffOp(() => BoothImporter.Randomize(AlleySession.SelectedEvent));
+        }
+
+        private async Task RunStaffOp(Func<Task> operation)
+        {
+            _staffSyncButton.SetEnabled(false);
+            _placeButton.SetEnabled(false);
+            _randomizeButton.SetEnabled(false);
             SetTicker(true);
             try
             {
-                await BoothImporter.Sync(AlleySession.SelectedEvent);
+                await operation();
             }
             catch (AlleyApiException e)
             {
-                OnImporterLog("Sync failed: " + e.Message);
+                OnImporterLog("Failed: " + e.Message);
             }
             catch (Exception e)
             {
-                OnImporterLog("Sync failed: " + e.Message);
+                OnImporterLog("Failed: " + e.Message);
                 Debug.LogException(e);
             }
             finally
@@ -408,6 +600,41 @@ namespace LegendsNexus.Alley.Editor
                 {
                     SetTicker(false);
                     RefreshStaffSummary();
+                    _ = RefreshStaffData();
+                }
+            }
+        }
+
+        private async void StartProfileSave()
+        {
+            if (_busy || AlleySession.Community == null) return;
+            string description = (_communityDescription.value ?? "").Trim();
+            string invite = (_communityInvite.value ?? "").Trim();
+            if (description.Length > 500) description = description.Substring(0, 500);
+
+            _busy = true;
+            _profileSaveButton.SetEnabled(false);
+            SetTicker(true);
+            SetStatus("Saving your profile...");
+            try
+            {
+                var body = new CommunityProfileBody { description = description, inviteUrl = invite };
+                await AlleyHttp.PatchJson<OkResponse>("/api/communities/mine", body, AlleySession.Token);
+                if (this == null) return;
+                AlleySession.SetCommunityProfile(description, invite);
+                SetStatus("Profile saved.");
+            }
+            catch (AlleyApiException e)
+            {
+                SetStatus(e.Message);
+            }
+            finally
+            {
+                _busy = false;
+                if (this != null)
+                {
+                    SetTicker(false);
+                    _profileSaveButton.SetEnabled(true);
                 }
             }
         }
@@ -431,6 +658,7 @@ namespace LegendsNexus.Alley.Editor
                 AlleySession.ApplyBoundsToGizmos();
                 UpdateEventInfo();
                 RunCheck();
+                if (AlleySession.IsStaff) _ = RefreshStaffData();
             }
         }
 

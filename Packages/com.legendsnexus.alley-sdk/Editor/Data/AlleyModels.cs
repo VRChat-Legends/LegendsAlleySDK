@@ -66,6 +66,7 @@ namespace LegendsNexus.Alley.Editor
         public string name;
         public string slug;
         public string description;
+        public string inviteUrl;
         public string logoUrl;
         public string groupId;
         public string ownerDiscordId;
@@ -92,6 +93,37 @@ namespace LegendsNexus.Alley.Editor
     {
         public bool ok;
         public string logoUrl;
+    }
+
+    [Serializable]
+    public class CommunityProfileBody
+    {
+        public string description;
+        public string inviteUrl;
+    }
+
+    [Serializable]
+    public class OkResponse
+    {
+        public bool ok;
+    }
+
+    [Serializable]
+    public class StaffCommunity
+    {
+        public string id;
+        public string name;
+        public string slug;
+        public string description;
+        public string logoUrl;
+        public string ownerUsername;
+        public bool active;
+    }
+
+    [Serializable]
+    public class StaffCommunitiesResponse
+    {
+        public StaffCommunity[] communities;
     }
 
     [Serializable]
