@@ -59,6 +59,11 @@ namespace LegendsNexus.Alley.Editor
         private StaffBooth[] _staffBooths = Array.Empty<StaffBooth>();
         private BoothLocation[] _placePlots = Array.Empty<BoothLocation>();
         private static readonly Dictionary<string, Texture2D> LogoCache = new Dictionary<string, Texture2D>();
+        private VisualElement _confirmOverlay;
+        private VisualElement _confirmSheet;
+        private TaskCompletionSource<bool> _confirmTcs;
+        private static readonly Dictionary<VisualElement, IVisualElementScheduledItem> RunningAnims =
+            new Dictionary<VisualElement, IVisualElementScheduledItem>();
         private VisualElement _checkWrap;
         private VisualElement _uploadWrap;
         private VisualElement _ticker;
@@ -118,6 +123,14 @@ namespace LegendsNexus.Alley.Editor
             _placePlotDropdown = rootVisualElement.Q<DropdownField>("place-plot-dropdown");
             _placeButton = rootVisualElement.Q<Button>("place-button");
             _randomizeButton = rootVisualElement.Q<Button>("randomize-button");
+            _confirmOverlay = rootVisualElement.Q("confirm-overlay");
+            _confirmSheet = rootVisualElement.Q("confirm-sheet");
+            rootVisualElement.Q<Button>("confirm-upload-button").clicked += () => ResolveConfirm(true);
+            rootVisualElement.Q<Button>("confirm-cancel-button").clicked += () => ResolveConfirm(false);
+            _confirmOverlay.RegisterCallback<PointerDownEvent>(evt =>
+            {
+                if (evt.target == _confirmOverlay) ResolveConfirm(false);
+            });
 
             _tabButtons = new Dictionary<string, Button>();
             _tabPages = new Dictionary<string, VisualElement>();
@@ -366,10 +379,7 @@ namespace LegendsNexus.Alley.Editor
 
             if (animate && oldIndex != newIndex)
             {
-                VisualElement page = _tabPages[id];
-                string enterClass = enterFromRight ? "alley-page-enter-right" : "alley-page-enter-left";
-                page.AddToClassList(enterClass);
-                page.schedule.Execute(() => page.RemoveFromClassList(enterClass)).StartingIn(20);
+                Animate(_tabPages[id], new Vector2(enterFromRight ? 44f : -44f, 0f), Vector2.zero, 0f, 1f, 0.24f);
             }
 
             if (id == "booth" && AlleySession.IsSignedIn) RefreshBooths();
@@ -382,8 +392,67 @@ namespace LegendsNexus.Alley.Editor
 
         private static void AnimateRow(VisualElement row, int index)
         {
-            row.AddToClassList("alley-row-enter");
-            row.schedule.Execute(() => row.RemoveFromClassList("alley-row-enter")).StartingIn(30 + index * 25);
+            Animate(row, new Vector2(-18f, 0f), Vector2.zero, 0f, 1f, 0.2f, index * 0.035f);
+        }
+
+        // schedule driven tween, editor uss transitions are too flaky for entrances
+        private static void Animate(VisualElement el, Vector2 from, Vector2 to, float fromOpacity, float toOpacity,
+            float duration, float delay = 0f, Action onDone = null)
+        {
+            if (RunningAnims.TryGetValue(el, out IVisualElementScheduledItem previous)) previous.Pause();
+
+            el.style.translate = new Translate(from.x, from.y);
+            el.style.opacity = fromOpacity;
+            double startAt = EditorApplication.timeSinceStartup + delay;
+
+            IVisualElementScheduledItem item = null;
+            item = el.schedule.Execute(() =>
+            {
+                double now = EditorApplication.timeSinceStartup;
+                if (now < startAt) return;
+                float t = duration <= 0f ? 1f : Mathf.Clamp01((float)((now - startAt) / duration));
+                float eased = 1f - Mathf.Pow(1f - t, 3f);
+                el.style.translate = new Translate(Mathf.Lerp(from.x, to.x, eased), Mathf.Lerp(from.y, to.y, eased));
+                el.style.opacity = Mathf.Lerp(fromOpacity, toOpacity, eased);
+                if (t >= 1f)
+                {
+                    item.Pause();
+                    RunningAnims.Remove(el);
+                    onDone?.Invoke();
+                }
+            }).Every(16);
+            RunningAnims[el] = item;
+        }
+
+        private static void ClearAnimStyles(VisualElement el)
+        {
+            el.style.translate = StyleKeyword.Null;
+            el.style.opacity = StyleKeyword.Null;
+        }
+
+        // bottom sheet confirm, replaces the native editor dialog
+        private Task<bool> ShowUploadConfirm()
+        {
+            _confirmTcs = new TaskCompletionSource<bool>();
+            _confirmOverlay.style.display = DisplayStyle.Flex;
+            Animate(_confirmOverlay, Vector2.zero, Vector2.zero, 0f, 1f, 0.15f);
+            Animate(_confirmSheet, new Vector2(0f, 300f), Vector2.zero, 1f, 1f, 0.26f, 0.03f, () => ClearAnimStyles(_confirmSheet));
+            return _confirmTcs.Task;
+        }
+
+        private void ResolveConfirm(bool accepted)
+        {
+            if (_confirmTcs == null) return;
+            TaskCompletionSource<bool> tcs = _confirmTcs;
+            _confirmTcs = null;
+            Animate(_confirmSheet, Vector2.zero, new Vector2(0f, 300f), 1f, 1f, 0.2f);
+            Animate(_confirmOverlay, Vector2.zero, Vector2.zero, 1f, 0f, 0.18f, 0.05f, () =>
+            {
+                _confirmOverlay.style.display = DisplayStyle.None;
+                ClearAnimStyles(_confirmOverlay);
+                ClearAnimStyles(_confirmSheet);
+            });
+            tcs.TrySetResult(accepted);
         }
 
         // pink segment sliding along the status bar while something is going on
@@ -782,13 +851,7 @@ namespace LegendsNexus.Alley.Editor
             if (_busy || booth == null || _report == null || !_report.CanUpload) return;
             if (AlleySession.SelectedEvent == null || AlleySession.Community == null) return;
 
-            bool confirmed = EditorUtility.DisplayDialog(
-                "Ready to upload?",
-                "By uploading you confirm you have the rights to everything in this booth and that " +
-                "VRChat Legends may include it in the event world and related media.\n\n" +
-                "The export copy gets event safe tweaks (baked light settings, 3D audio, no reflection " +
-                "probes or directional lights). Your scene objects are not changed.",
-                "Upload my booth", "Not yet");
+            bool confirmed = await ShowUploadConfirm();
             if (!confirmed) return;
 
             _busy = true;

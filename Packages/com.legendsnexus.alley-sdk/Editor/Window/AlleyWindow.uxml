@@ -140,5 +140,21 @@
             <ui:VisualElement name="status-ticker" class="alley-ticker" />
             <ui:Label name="status-label" text="" class="alley-status" />
         </ui:VisualElement>
+
+        <ui:VisualElement name="confirm-overlay" class="alley-overlay">
+            <ui:VisualElement name="confirm-sheet" class="alley-sheet">
+                <ui:Label text="READY TO UPLOAD?" class="alley-card-title alley-sheet-title" />
+                <ui:Label class="alley-body"
+                    text="By uploading you confirm you have the rights to everything in this booth and that VRChat Legends may include it in the event world and related media." />
+                <ui:Label class="alley-muted"
+                    text="The export copy gets event safe tweaks (baked light settings, 3D audio, no reflection probes or directional lights). Your scene objects are not changed." />
+                <ui:VisualElement class="alley-sheet-buttons">
+                    <ui:VisualElement class="alley-shadow alley-shadow-purple alley-grow">
+                        <ui:Button name="confirm-upload-button" text="UPLOAD MY BOOTH" class="alley-button-primary" />
+                    </ui:VisualElement>
+                    <ui:Button name="confirm-cancel-button" text="NOT YET" class="alley-button-ghost alley-sheet-cancel" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>
