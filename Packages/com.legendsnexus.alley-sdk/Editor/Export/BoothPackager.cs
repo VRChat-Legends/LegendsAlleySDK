@@ -12,7 +12,7 @@ namespace LegendsNexus.Alley.Editor
     {
         private const string ExportFolder = "Assets/LegendsAlleyExport";
 
-        public static string CreatePackage(LegendsBooth booth, BoothStatsPayload stats, AlleyEvent alleyEvent, CommunityInfo community)
+        public static string CreatePackage(LegendsBooth booth, BoothStatsPayload stats, string[] shaders, AlleyEvent alleyEvent, CommunityInfo community)
         {
             string safeName = MakeSafeName(booth.BoothName);
             string stagingDir = Path.Combine(Path.GetTempPath(), "LegendsAlley", Guid.NewGuid().ToString("N"));
@@ -60,6 +60,7 @@ namespace LegendsNexus.Alley.Editor
                     eventId = alleyEvent.id,
                     communityId = community.id,
                     prefabName = safeName,
+                    shaders = shaders ?? new string[0],
                     stats = stats,
                 };
                 File.WriteAllText(Path.Combine(stagingDir, "booth.json"), JsonUtility.ToJson(metadata, true));

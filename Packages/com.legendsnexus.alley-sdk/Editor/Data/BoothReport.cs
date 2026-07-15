@@ -23,6 +23,8 @@ namespace LegendsNexus.Alley.Editor
         public BoothStatsPayload Stats = new BoothStatsPayload();
         public readonly List<CheckRow> Rows = new List<CheckRow>();
         public readonly List<string> Blockers = new List<string>();
+        // shader names the packaged booth will actually ship with
+        public readonly List<string> ShaderNames = new List<string>();
 
         public bool CanUpload
         {

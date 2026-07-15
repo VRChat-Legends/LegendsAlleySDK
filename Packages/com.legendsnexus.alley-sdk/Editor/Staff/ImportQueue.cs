@@ -10,11 +10,13 @@ namespace LegendsNexus.Alley.Editor
         public string boothId;
         public string communityId;
         public string communityName;
+        public string communitySlug;
         public string prefabName;
         public string sha256;
         public int version;
         public string locationPath;
         public string packagePath;
+        public string[] shaders;
         public string stage; // pending -> importing -> place
     }
 

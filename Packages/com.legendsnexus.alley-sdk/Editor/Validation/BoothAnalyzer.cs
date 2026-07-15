@@ -41,6 +41,12 @@ namespace LegendsNexus.Alley.Editor
             stats.portals = root.GetComponentsInChildren<VRCPortalMarker>(true).Length;
             stats.textComponents = CountTextComponents(root);
             stats.audioSources = root.GetComponentsInChildren<AudioSource>(true).Length;
+            stats.nonBoxColliders = CountNonBoxColliders(root);
+
+            // probuilder pieces collapse to one renderer with one material at
+            // package time, so estimate against what actually ships
+            HashSet<Renderer> pbRenderers = ProBuilderBaker.CollectPieceRenderers(root);
+            EstimateRendering(renderers, pbRenderers, stats, report);
 
             CollectAssetStats(root, stats);
             CollectBlockers(root, report);
@@ -185,6 +191,59 @@ namespace LegendsNexus.Alley.Editor
             stats.buildSizeMB = Mathf.Round(diskBytes / 1048576f * 10f) / 10f;
         }
 
+        private static int CountNonBoxColliders(GameObject root)
+        {
+            int count = 0;
+            foreach (Collider collider in root.GetComponentsInChildren<Collider>(true))
+            {
+                if (!(collider is BoxCollider)) count++;
+            }
+            return count;
+        }
+
+        // draw calls ~= material slots before batching, set passes ~= unique
+        // materials. baked probuilder pieces count as one of each. also collects
+        // the shader list the package will ship and flags off whitelist ones
+        private static void EstimateRendering(Renderer[] renderers, HashSet<Renderer> pbRenderers, BoothStatsPayload stats, BoothReport report)
+        {
+            int drawCalls = 0;
+            var uniqueMaterials = new HashSet<Material>();
+            var shaders = new SortedSet<string>();
+            var flagged = new HashSet<string>();
+
+            foreach (Renderer renderer in renderers)
+            {
+                if (pbRenderers.Contains(renderer)) continue;
+                Material[] materials = renderer.sharedMaterials;
+                drawCalls += materials.Length;
+                foreach (Material material in materials)
+                {
+                    if (material == null) continue;
+                    uniqueMaterials.Add(material);
+                    string shaderName = material.shader != null ? material.shader.name : "";
+                    if (string.IsNullOrEmpty(shaderName)) continue;
+                    shaders.Add(shaderName);
+                    if (!AlleyShaderRules.IsAllowed(shaderName) && flagged.Add(shaderName))
+                    {
+                        report.Blockers.Add($"Shader \"{shaderName}\" is not on the event whitelist. Use {AlleyShaderRules.Description}.");
+                    }
+                }
+            }
+
+            if (pbRenderers.Count > 0)
+            {
+                drawCalls += 1;
+                shaders.Add("Standard");
+                stats.estimatedSetPasses = uniqueMaterials.Count + 1;
+            }
+            else
+            {
+                stats.estimatedSetPasses = uniqueMaterials.Count;
+            }
+            stats.estimatedDrawCalls = drawCalls;
+            report.ShaderNames.AddRange(shaders);
+        }
+
         private static void CollectBlockers(GameObject root, BoothReport report)
         {
             int probes = root.GetComponentsInChildren<ReflectionProbe>(true).Length;
@@ -223,6 +282,8 @@ namespace LegendsNexus.Alley.Editor
             AddCount(report, "Build size (MB)", stats.buildSizeMB, limits.maxBuildSizeMB);
             AddCount(report, "Memory estimate (MB)", stats.vramMB, limits.maxVramMB);
             AddCount(report, "Material slots", stats.materialSlots, limits.maxMaterialSlots);
+            AddCount(report, "Est. draw calls", stats.estimatedDrawCalls, limits.maxEstimatedDrawCalls);
+            AddCount(report, "Est. set passes", stats.estimatedSetPasses, limits.maxEstimatedSetPasses);
             AddCount(report, "Unique textures", stats.uniqueTextures, limits.maxUniqueTextures);
             AddCount(report, "Largest texture", stats.maxTextureResolution, limits.maxTextureResolution);
             AddCount(report, "Static meshes", stats.staticMeshes, limits.maxStaticMeshes);
@@ -237,6 +298,16 @@ namespace LegendsNexus.Alley.Editor
             AddGated(report, "Portals", stats.portals, limits.maxPortals, limits.allowPortals);
             AddCount(report, "Text components", stats.textComponents, limits.maxTextComponents);
             AddCount(report, "Audio sources", stats.audioSources, limits.maxAudioSources);
+
+            bool collidersOk = stats.nonBoxColliders <= limits.maxNonBoxColliders;
+            report.Rows.Add(new CheckRow
+            {
+                Label = "Non-box colliders",
+                Value = stats.nonBoxColliders.ToString(),
+                Limit = limits.maxNonBoxColliders.ToString(),
+                Severity = collidersOk ? CheckSeverity.Pass : CheckSeverity.Fail,
+                Hint = collidersOk ? null : "Only box colliders are allowed. Replace mesh, sphere, capsule, wheel, and terrain colliders with box colliders.",
+            });
         }
 
         private static void AddCount(BoothReport report, string label, float value, float limit)

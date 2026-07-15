@@ -867,7 +867,7 @@ namespace LegendsNexus.Alley.Editor
                     ? $"ProBuilder detected on booth, optimizations will be done. Baking {pbMeshes} meshes into one..."
                     : "Building the booth package...");
                 _uploadProgress.value = 0;
-                zipPath = BoothPackager.CreatePackage(booth, _report.Stats, AlleySession.SelectedEvent, AlleySession.Community);
+                zipPath = BoothPackager.CreatePackage(booth, _report.Stats, _report.ShaderNames.ToArray(), AlleySession.SelectedEvent, AlleySession.Community);
 
                 AcceptedBooth accepted = await BoothUploader.Upload(zipPath, AlleySession.SelectedEvent.id, (progress, message) =>
                 {

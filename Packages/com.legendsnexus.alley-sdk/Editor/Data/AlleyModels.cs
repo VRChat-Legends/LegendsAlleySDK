@@ -33,6 +33,9 @@ namespace LegendsNexus.Alley.Editor
         public int maxPortals;
         public int maxTextComponents;
         public int maxAudioSources;
+        public int maxEstimatedDrawCalls;
+        public int maxEstimatedSetPasses;
+        public int maxNonBoxColliders;
         public bool allowUdon;
         public bool allowPickups;
         public bool allowPedestals;
@@ -139,6 +142,7 @@ namespace LegendsNexus.Alley.Editor
         public long fileSize;
         public string sha256;
         public string prefabName;
+        public string[] shaders;
         public string downloadUrl;
         public string uploadedAt;
     }
@@ -209,6 +213,9 @@ namespace LegendsNexus.Alley.Editor
         public int portals;
         public int textComponents;
         public int audioSources;
+        public int estimatedDrawCalls;
+        public int estimatedSetPasses;
+        public int nonBoxColliders;
     }
 
     [Serializable]
@@ -218,6 +225,7 @@ namespace LegendsNexus.Alley.Editor
         public string eventId;
         public string communityId;
         public string prefabName;
+        public string[] shaders;
         public BoothStatsPayload stats;
     }
 

@@ -42,6 +42,21 @@ namespace LegendsNexus.Alley.Editor
 #endif
         }
 
+        // renderers living on probuilder pieces, the analyzer treats these as
+        // one renderer since that is what the bake produces
+        public static HashSet<Renderer> CollectPieceRenderers(GameObject root)
+        {
+            var set = new HashSet<Renderer>();
+#if ALLEY_PROBUILDER
+            foreach (ProBuilderMesh pb in root.GetComponentsInChildren<ProBuilderMesh>(true))
+            {
+                Renderer renderer = pb.GetComponent<Renderer>();
+                if (renderer != null) set.Add(renderer);
+            }
+#endif
+            return set;
+        }
+
         // instantiated probuilder objects share the source mesh until forked, so
         // destroying a copy would nuke the scene booth's meshes. fork them first
         public static void MakeMeshesUnique(GameObject root)
@@ -257,18 +272,15 @@ namespace LegendsNexus.Alley.Editor
             baked.AddComponent<MeshFilter>().sharedMesh = combined;
             baked.AddComponent<MeshRenderer>().sharedMaterial = material;
 
-            bool hadCollider = false;
             var shells = new List<GameObject>();
             foreach (ProBuilderMesh pb in pbMeshes)
             {
                 if (pb == null) continue;
                 GameObject go = pb.gameObject;
+                // events are box collider only, and a mesh collider would point
+                // at a destroyed probuilder mesh anyway
                 var collider = go.GetComponent<MeshCollider>();
-                if (collider != null)
-                {
-                    hadCollider = true;
-                    Object.DestroyImmediate(collider);
-                }
+                if (collider != null) Object.DestroyImmediate(collider);
                 // probuilder requires the filter and renderer, so it goes first
                 Object.DestroyImmediate(pb);
                 var filter = go.GetComponent<MeshFilter>();
@@ -286,11 +298,6 @@ namespace LegendsNexus.Alley.Editor
                 {
                     Object.DestroyImmediate(shell);
                 }
-            }
-
-            if (hadCollider)
-            {
-                baked.AddComponent<MeshCollider>().sharedMesh = combined;
             }
         }
 #else

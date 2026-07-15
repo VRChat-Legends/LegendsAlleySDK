@@ -15,7 +15,7 @@ namespace LegendsNexus.Alley.Editor
     // whatever changed, and rebuild only those plots. everything else is skipped
     internal static class BoothImporter
     {
-        private const string ImportRoot = "Assets/AlleyBooths";
+        private const string ImportRoot = "Assets/LegendsAlley/Booths";
         private const string ExportFolder = "Assets/LegendsAlleyExport";
 
         public static event Action<string> Log = delegate { };
@@ -182,11 +182,13 @@ namespace LegendsNexus.Alley.Editor
                     boothId = booth.id,
                     communityId = booth.communityId,
                     communityName = booth.communityName,
+                    communitySlug = booth.communitySlug,
                     prefabName = SanitizeName(booth.prefabName),
                     sha256 = booth.sha256,
                     version = booth.version,
                     locationPath = ScenePath(location.transform),
                     packagePath = packagePath,
+                    shaders = booth.shaders ?? new string[0],
                     stage = "pending",
                 });
             }
@@ -394,6 +396,7 @@ namespace LegendsNexus.Alley.Editor
                 if (prefab == null) throw new Exception($"could not find the booth prefab at {prefabPath}");
 
                 var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, location.transform);
+                instance.name = item.communityName + " Booth";
                 instance.transform.localPosition = Vector3.zero;
                 instance.transform.localRotation = Quaternion.identity;
 
@@ -404,6 +407,7 @@ namespace LegendsNexus.Alley.Editor
                 EditorSceneManager.MarkSceneDirty(location.gameObject.scene);
 
                 Log($"Placed {item.communityName} v{item.version} on plot {location.PlotLabel}.");
+                WarnAboutMissingShaders(item);
             }
             catch (Exception e)
             {
@@ -412,17 +416,54 @@ namespace LegendsNexus.Alley.Editor
             Advance(queue);
         }
 
+        // booths self report their shader list at upload, tell staff when this
+        // project is missing some so pink booths are not a mystery
+        private static void WarnAboutMissingShaders(ImportItem item)
+        {
+            if (item.shaders == null) return;
+            var missing = new List<string>();
+            foreach (string name in item.shaders)
+            {
+                if (string.IsNullOrEmpty(name)) continue;
+                if (Shader.Find(name) == null) missing.Add(name);
+            }
+            if (missing.Count == 0) return;
+            Log($"Heads up: {item.communityName} uses shaders this project does not have: {string.Join(", ", missing)}. Import them or their booth will render broken.");
+        }
+
         private static string MoveImportedAssets(ImportItem item)
         {
-            string target = ImportRoot + "/" + item.communityId;
+            string target = ImportRoot + "/" + FolderNameFor(item);
             if (AssetDatabase.IsValidFolder(ExportFolder))
             {
-                if (!AssetDatabase.IsValidFolder(ImportRoot)) AssetDatabase.CreateFolder("Assets", "AlleyBooths");
+                EnsureFolder(ImportRoot);
                 if (AssetDatabase.IsValidFolder(target)) AssetDatabase.DeleteAsset(target);
                 string error = AssetDatabase.MoveAsset(ExportFolder, target);
                 if (!string.IsNullOrEmpty(error)) throw new Exception(error);
             }
             return target + "/" + item.prefabName + ".prefab";
+        }
+
+        // readable folder per community, finding a booth among 50 should not
+        // mean scanning random ids
+        private static string FolderNameFor(ImportItem item)
+        {
+            if (!string.IsNullOrEmpty(item.communitySlug)) return item.communitySlug;
+            string safe = SanitizeName(item.communityName);
+            return string.IsNullOrEmpty(safe) ? item.communityId : safe;
+        }
+
+        private static void EnsureFolder(string path)
+        {
+            if (AssetDatabase.IsValidFolder(path)) return;
+            string[] parts = path.Split('/');
+            string current = parts[0];
+            for (int i = 1; i < parts.Length; i++)
+            {
+                string next = current + "/" + parts[i];
+                if (!AssetDatabase.IsValidFolder(next)) AssetDatabase.CreateFolder(current, parts[i]);
+                current = next;
+            }
         }
 
         // pull the creator marker out of the prefab asset itself so placed
@@ -449,7 +490,7 @@ namespace LegendsNexus.Alley.Editor
 
         private static string PrefabPathFor(ImportItem item)
         {
-            string moved = ImportRoot + "/" + item.communityId + "/" + item.prefabName + ".prefab";
+            string moved = ImportRoot + "/" + FolderNameFor(item) + "/" + item.prefabName + ".prefab";
             if (AssetDatabase.LoadAssetAtPath<GameObject>(moved) != null) return moved;
             string fresh = ExportFolder + "/" + item.prefabName + ".prefab";
             if (AssetDatabase.LoadAssetAtPath<GameObject>(fresh) != null) return fresh;
