@@ -7,7 +7,7 @@ namespace LegendsNexus.Alley
     [HelpURL("https://vrchatlegends.com")]
     public class LegendsBooth : MonoBehaviour
     {
-        [Tooltip("Shown to event staff, defaults to the object name when empty.")]
+        [Tooltip("Which community this booth belongs to. Pick it from the dropdown in the inspector.")]
         public string displayName = "";
 
         [Tooltip("Draw the size limit box in the scene view.")]

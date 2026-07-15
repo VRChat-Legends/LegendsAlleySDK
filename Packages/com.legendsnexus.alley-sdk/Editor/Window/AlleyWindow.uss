@@ -254,6 +254,11 @@
     flex-shrink: 1;
 }
 
+.alley-logo-button {
+    align-self: flex-start;
+    margin-top: 10px;
+}
+
 /* dropdowns and text inputs, hard edges */
 .alley-card .unity-base-popup-field__input {
     background-color: #0A0A0A;

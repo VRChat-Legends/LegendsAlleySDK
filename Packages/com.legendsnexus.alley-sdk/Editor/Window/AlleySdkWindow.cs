@@ -50,6 +50,7 @@ namespace LegendsNexus.Alley.Editor
         private VisualElement _uploadWrap;
         private VisualElement _ticker;
         private VisualElement _statusBar;
+        private Button _logoButton;
         private IVisualElementScheduledItem _tickerAnim;
         private readonly HashSet<VisualElement> _shownCards = new HashSet<VisualElement>();
 
@@ -98,6 +99,7 @@ namespace LegendsNexus.Alley.Editor
             _uploadWrap = rootVisualElement.Q("upload-wrap");
             _ticker = rootVisualElement.Q("status-ticker");
             _statusBar = rootVisualElement.Q("status-bar");
+            _logoButton = rootVisualElement.Q<Button>("logo-button");
 
             LoadHeaderLogo();
 
@@ -107,6 +109,7 @@ namespace LegendsNexus.Alley.Editor
             _checkButton.clicked += RunCheck;
             _uploadButton.clicked += StartUpload;
             _staffSyncButton.clicked += StartStaffSync;
+            _logoButton.clicked += StartLogoUpload;
             _eventDropdown.RegisterValueChangedCallback(_ => OnEventPicked());
             _boothDropdown.RegisterValueChangedCallback(_ => RunCheck());
 
@@ -179,6 +182,57 @@ namespace LegendsNexus.Alley.Editor
             SetTicker(false);
             SetStatus("Signed out.");
             RefreshUi();
+        }
+
+        private async void StartLogoUpload()
+        {
+            if (_busy || AlleySession.Community == null) return;
+            string path = EditorUtility.OpenFilePanel("Pick your community logo", "", "png,jpg,jpeg,webp");
+            if (string.IsNullOrEmpty(path)) return;
+
+            byte[] bytes;
+            try
+            {
+                bytes = System.IO.File.ReadAllBytes(path);
+            }
+            catch (Exception e)
+            {
+                SetStatus("Could not read that file: " + e.Message);
+                return;
+            }
+            if (bytes.Length > 2 * 1024 * 1024)
+            {
+                SetStatus("Logo must be 2 MB or smaller.");
+                return;
+            }
+
+            string ext = System.IO.Path.GetExtension(path).ToLowerInvariant();
+            string contentType = ext == ".png" ? "image/png" : ext == ".webp" ? "image/webp" : "image/jpeg";
+
+            _busy = true;
+            _logoButton.SetEnabled(false);
+            SetTicker(true);
+            SetStatus("Uploading your logo...");
+            try
+            {
+                await AlleyHttp.PutBytes<LogoResponse>("/api/communities/mine/logo", bytes, contentType, AlleySession.Token);
+                if (this == null) return;
+                SetStatus("Logo updated.");
+                _ = LoadCommunityLogo();
+            }
+            catch (AlleyApiException e)
+            {
+                SetStatus(e.Message);
+            }
+            finally
+            {
+                _busy = false;
+                if (this != null)
+                {
+                    SetTicker(false);
+                    _logoButton.SetEnabled(true);
+                }
+            }
         }
 
         private void OnSessionChanged()

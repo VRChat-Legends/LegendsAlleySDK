@@ -57,6 +57,15 @@ namespace LegendsNexus.Alley.Editor
             return await Send<ChunkResponse>(request);
         }
 
+        public static async Task<T> PutBytes<T>(string path, byte[] bytes, string contentType, string token)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Put, AlleyConfig.ApiBase + path);
+            Authorize(request, token);
+            request.Content = new ByteArrayContent(bytes);
+            request.Content.Headers.Add("Content-Type", contentType);
+            return await Send<T>(request);
+        }
+
         public static async Task<byte[]> GetBytes(string path, string token)
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, AlleyConfig.ApiBase + path);

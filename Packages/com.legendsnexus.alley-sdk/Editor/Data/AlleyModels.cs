@@ -88,6 +88,13 @@ namespace LegendsNexus.Alley.Editor
     }
 
     [Serializable]
+    public class LogoResponse
+    {
+        public bool ok;
+        public string logoUrl;
+    }
+
+    [Serializable]
     public class StaffBooth
     {
         public string id;

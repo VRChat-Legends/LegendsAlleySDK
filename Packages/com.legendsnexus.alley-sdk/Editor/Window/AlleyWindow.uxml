@@ -37,6 +37,7 @@
                             <ui:Label name="community-owner" text="" class="alley-muted" />
                         </ui:VisualElement>
                     </ui:VisualElement>
+                    <ui:Button name="logo-button" text="CHANGE LOGO" class="alley-button-ghost alley-logo-button" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
