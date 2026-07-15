@@ -1,0 +1,113 @@
+.alley-insp {
+    background-color: #14161A;
+    border-left-width: 3px;
+    padding: 10px 12px 12px 12px;
+    margin: 4px 2px 4px 0;
+}
+
+.alley-insp-pink { border-left-color: #FF007A; }
+.alley-insp-gold { border-left-color: #FFD700; }
+
+.alley-insp-header {
+    font-size: 10px;
+    letter-spacing: 3px;
+    -unity-font-style: bold;
+    margin-bottom: 8px;
+}
+
+.alley-insp-header-pink { color: #FF33A1; }
+.alley-insp-header-gold { color: #FFD700; }
+
+.alley-insp .unity-base-field {
+    margin: 2px 0;
+}
+
+.alley-insp .unity-base-field__label {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 11px;
+    min-width: 100px;
+}
+
+.alley-insp .unity-base-text-field__input {
+    background-color: #0A0A0A;
+    border-width: 1px;
+    border-color: #2A2D33;
+    border-radius: 0;
+    color: #EEEEEE;
+    padding: 3px 6px;
+}
+
+.alley-insp .unity-base-text-field__input:focus {
+    border-color: #FF007A;
+}
+
+.alley-insp .unity-base-popup-field__input {
+    background-color: #0A0A0A;
+    border-width: 1px;
+    border-color: #2A2D33;
+    border-radius: 0;
+    color: #EEEEEE;
+}
+
+.alley-insp .unity-toggle__checkmark {
+    background-color: #0A0A0A;
+    border-width: 1px;
+    border-color: #2A2D33;
+    border-radius: 0;
+}
+
+.alley-insp-hint {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 10px;
+    white-space: normal;
+    margin-top: 6px;
+}
+
+.alley-insp-status {
+    margin-top: 8px;
+    padding: 6px 8px;
+    background-color: #0E1013;
+    border-left-width: 3px;
+    border-left-color: #1FD1ED;
+    color: #C9CDD3;
+    font-size: 11px;
+    white-space: normal;
+}
+
+.alley-insp-status-empty {
+    border-left-color: #2A2D33;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.alley-insp-button {
+    background-color: #FF007A;
+    color: #050505;
+    border-width: 0;
+    border-radius: 0;
+    padding: 7px 12px;
+    margin: 10px 0 0 0;
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+    font-size: 11px;
+}
+
+.alley-insp-button:hover { background-color: #FF33A1; }
+.alley-insp-button:active { background-color: #D60067; }
+
+.alley-insp-button-ghost {
+    background-color: rgba(0, 0, 0, 0);
+    color: rgba(255, 255, 255, 0.6);
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.2);
+    border-radius: 0;
+    padding: 5px 10px;
+    margin: 8px 0 0 0;
+    font-size: 10px;
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+}
+
+.alley-insp-button-ghost:hover {
+    color: #FF33A1;
+    border-color: #FF007A;
+}
