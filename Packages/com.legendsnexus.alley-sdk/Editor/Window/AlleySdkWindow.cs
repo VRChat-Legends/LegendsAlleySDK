@@ -215,10 +215,10 @@ namespace LegendsNexus.Alley.Editor
             SetStatus("Uploading your logo...");
             try
             {
-                await AlleyHttp.PutBytes<LogoResponse>("/api/communities/mine/logo", bytes, contentType, AlleySession.Token);
+                LogoResponse response = await AlleyHttp.PutBytes<LogoResponse>("/api/communities/mine/logo", bytes, contentType, AlleySession.Token);
                 if (this == null) return;
+                AlleySession.SetCommunityLogoUrl(response.logoUrl);
                 SetStatus("Logo updated.");
-                _ = LoadCommunityLogo();
             }
             catch (AlleyApiException e)
             {
@@ -585,7 +585,10 @@ namespace LegendsNexus.Alley.Editor
         private async Task LoadCommunityLogo()
         {
             string url = AlleySession.Community?.logoUrl;
-            if (string.IsNullOrEmpty(url) || !url.StartsWith("https://")) return;
+            if (string.IsNullOrEmpty(url)) return;
+            // https only, except plain http against a local dev server
+            bool localDev = url.StartsWith("http://localhost") || url.StartsWith("http://127.0.0.1");
+            if (!url.StartsWith("https://") && !localDev) return;
             try
             {
                 using var client = new HttpClient();

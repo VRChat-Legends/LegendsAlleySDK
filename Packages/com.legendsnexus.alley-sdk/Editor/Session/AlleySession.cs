@@ -125,6 +125,14 @@ namespace LegendsNexus.Alley.Editor
             LegendsBooth.BoundsLimit = new Vector3(bounds.x, bounds.y, bounds.z);
         }
 
+        public static void SetCommunityLogoUrl(string url)
+        {
+            if (Community == null || string.IsNullOrEmpty(url)) return;
+            Community.logoUrl = url;
+            Save();
+            Changed?.Invoke();
+        }
+
         private static void ClearLocal()
         {
             _token = null;
