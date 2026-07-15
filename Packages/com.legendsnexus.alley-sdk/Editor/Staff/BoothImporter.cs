@@ -24,10 +24,6 @@ namespace LegendsNexus.Alley.Editor
         [InitializeOnLoadMethod]
         private static void ResumeAfterReload()
         {
-            AssetDatabase.importPackageCompleted += OnImportCompleted;
-            AssetDatabase.importPackageFailed += OnImportFailed;
-            AssetDatabase.importPackageCancelled += OnImportCancelled;
-
             if (ImportQueue.HasWork())
             {
                 EditorApplication.delayCall += () =>
@@ -152,6 +148,7 @@ namespace LegendsNexus.Alley.Editor
             queue.updatedCount = 0;
             queue.skippedCount = 0;
 
+            var work = new List<(BoothLocation location, StaffBooth booth)>();
             foreach ((BoothLocation location, StaffBooth booth) in plan)
             {
                 if (skipUpToDate && location.placedSha256 == booth.sha256 && location.HasBooth)
@@ -159,21 +156,25 @@ namespace LegendsNexus.Alley.Editor
                     queue.skippedCount++;
                     continue;
                 }
+                work.Add((location, booth));
+            }
 
+            if (work.Count == 0)
+            {
+                Log($"Everything is up to date. Skipped {queue.skippedCount} plot(s).");
+                ImportQueue.Clear();
+                IsRunning = false;
+                return;
+            }
+
+            Log($"Downloading {work.Count} booth package(s)...");
+            string[] packagePaths = await Task.WhenAll(work.Select(w => DownloadSafe(w.booth)));
+
+            for (int i = 0; i < work.Count; i++)
+            {
+                if (packagePaths[i] == null) continue;
+                (BoothLocation location, StaffBooth booth) = work[i];
                 bool isUpdate = location.placedCommunityId == booth.communityId && location.HasBooth;
-                Log($"{(isUpdate ? "Updating" : "Placing")} {booth.communityName} v{booth.version} on plot {location.PlotLabel}...");
-
-                string packagePath;
-                try
-                {
-                    packagePath = await DownloadAndExtract(booth);
-                }
-                catch (Exception e)
-                {
-                    Log($"Download failed for {booth.communityName}: {e.Message}");
-                    continue;
-                }
-
                 if (isUpdate) queue.updatedCount++;
                 else queue.importedCount++;
 
@@ -187,7 +188,7 @@ namespace LegendsNexus.Alley.Editor
                     sha256 = booth.sha256,
                     version = booth.version,
                     locationPath = ScenePath(location.transform),
-                    packagePath = packagePath,
+                    packagePath = packagePaths[i],
                     shaders = booth.shaders ?? new string[0],
                     stage = "pending",
                 });
@@ -203,7 +204,172 @@ namespace LegendsNexus.Alley.Editor
                 return;
             }
 
+            ExtractAllAndPlace();
+        }
+
+        private static async Task<string> DownloadSafe(StaffBooth booth)
+        {
+            try
+            {
+                return await DownloadAndExtract(booth);
+            }
+            catch (Exception e)
+            {
+                Log($"Download failed for {booth.communityName}: {e.Message}");
+                return null;
+            }
+        }
+
+        // unitypackages are gzipped tars, so instead of paying for a full
+        // AssetDatabase.ImportPackage cycle per booth we unpack every package
+        // straight to its final folder and refresh once for the whole batch
+        private static void ExtractAllAndPlace()
+        {
+            ImportQueueData queue = ImportQueue.Load();
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            var seenGuids = new HashSet<string>();
+            int unpacked = 0;
+
+            foreach (ImportItem item in queue.items)
+            {
+                if (item.stage != "pending") continue;
+                BoothLocation location = FindLocationByPath(item.locationPath);
+                if (location != null)
+                {
+                    for (int i = location.transform.childCount - 1; i >= 0; i--)
+                    {
+                        UnityEngine.Object.DestroyImmediate(location.transform.GetChild(i).gameObject);
+                    }
+                }
+                try
+                {
+                    ExtractPackage(item, seenGuids);
+                    item.stage = "place";
+                    unpacked++;
+                }
+                catch (Exception e)
+                {
+                    Log($"Could not unpack {item.communityName}: {e.Message}");
+                    item.stage = "failed";
+                }
+            }
+
+            queue.items.RemoveAll(i => i.stage == "failed");
+            // save before the refresh, a script compile can reload the domain and
+            // the resume hook picks placement back up from here
+            ImportQueue.Save(queue);
+
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            Log($"Unpacked {unpacked} booth(s) in {watch.Elapsed.TotalSeconds:0.0}s.");
             ProcessNext();
+        }
+
+        private class PackageEntry
+        {
+            public byte[] Asset;
+            public byte[] Meta;
+            public string Pathname;
+        }
+
+        private static void ExtractPackage(ImportItem item, HashSet<string> seenGuids)
+        {
+            string targetFolder = ImportRoot + "/" + FolderNameFor(item);
+            if (AssetDatabase.IsValidFolder(targetFolder)) AssetDatabase.DeleteAsset(targetFolder);
+            const string exportPrefix = ExportFolder + "/";
+
+            foreach (KeyValuePair<string, PackageEntry> pair in ReadUnityPackage(item.packagePath))
+            {
+                PackageEntry entry = pair.Value;
+                if (entry.Asset == null || string.IsNullOrEmpty(entry.Pathname)) continue;
+                // packages are creator supplied, keep the paths honest
+                if (!entry.Pathname.StartsWith("Assets/", StringComparison.Ordinal) || entry.Pathname.Contains("..")) continue;
+                // same guid from an earlier booth this batch
+                if (!seenGuids.Add(pair.Key)) continue;
+                // shared dependency that genuinely lives elsewhere in the project.
+                // guid lookups can be stale for the folder we just wiped, so only
+                // trust mappings whose file is really still on disk outside it
+                string existingPath = AssetDatabase.GUIDToAssetPath(pair.Key);
+                if (!string.IsNullOrEmpty(existingPath)
+                    && !existingPath.StartsWith(targetFolder + "/", StringComparison.Ordinal)
+                    && File.Exists(existingPath)) continue;
+
+                string relative = entry.Pathname.StartsWith(exportPrefix, StringComparison.Ordinal)
+                    ? entry.Pathname.Substring(exportPrefix.Length)
+                    : "deps/" + entry.Pathname.Substring("Assets/".Length);
+                string finalPath = targetFolder + "/" + relative;
+                Directory.CreateDirectory(Path.GetDirectoryName(finalPath));
+                File.WriteAllBytes(finalPath, entry.Asset);
+                if (entry.Meta != null) File.WriteAllBytes(finalPath + ".meta", entry.Meta);
+            }
+        }
+
+        // minimal tar.gz reader for the unitypackage layout: {guid}/asset,
+        // {guid}/asset.meta and {guid}/pathname entries
+        private static Dictionary<string, PackageEntry> ReadUnityPackage(string packagePath)
+        {
+            var entries = new Dictionary<string, PackageEntry>();
+            using (FileStream file = File.OpenRead(packagePath))
+            using (var gzip = new GZipStream(file, CompressionMode.Decompress))
+            {
+                byte[] header = new byte[512];
+                while (ReadExact(gzip, header, 512))
+                {
+                    bool empty = true;
+                    for (int i = 0; i < 512 && empty; i++) empty = header[i] == 0;
+                    if (empty) break;
+
+                    string name = ReadTarString(header, 0, 100);
+                    long size = ReadTarOctal(header, 124, 12);
+                    byte type = header[156];
+
+                    var data = new byte[size];
+                    if (size > 0 && !ReadExact(gzip, data, (int)size)) break;
+                    long padding = (512 - size % 512) % 512;
+                    if (padding > 0) ReadExact(gzip, new byte[padding], (int)padding);
+
+                    if (type != (byte)'0' && type != 0) continue;
+                    if (name.StartsWith("./", StringComparison.Ordinal)) name = name.Substring(2);
+                    int slash = name.IndexOf('/');
+                    if (slash <= 0) continue;
+                    string guid = name.Substring(0, slash);
+                    string part = name.Substring(slash + 1);
+
+                    if (!entries.TryGetValue(guid, out PackageEntry entry))
+                    {
+                        entry = new PackageEntry();
+                        entries[guid] = entry;
+                    }
+                    if (part == "asset") entry.Asset = data;
+                    else if (part == "asset.meta") entry.Meta = data;
+                    else if (part == "pathname") entry.Pathname = System.Text.Encoding.UTF8.GetString(data).Split('\n')[0].Trim();
+                }
+            }
+            return entries;
+        }
+
+        private static bool ReadExact(Stream stream, byte[] buffer, int count)
+        {
+            int offset = 0;
+            while (offset < count)
+            {
+                int read = stream.Read(buffer, offset, count - offset);
+                if (read <= 0) return false;
+                offset += read;
+            }
+            return true;
+        }
+
+        private static string ReadTarString(byte[] header, int offset, int length)
+        {
+            int end = offset;
+            while (end < offset + length && header[end] != 0) end++;
+            return System.Text.Encoding.ASCII.GetString(header, offset, end - offset);
+        }
+
+        private static long ReadTarOctal(byte[] header, int offset, int length)
+        {
+            string text = ReadTarString(header, offset, length).Trim(' ', '\0');
+            return string.IsNullOrEmpty(text) ? 0 : Convert.ToInt64(text, 8);
         }
 
         private static void ClearPlot(BoothLocation location)
@@ -301,7 +467,7 @@ namespace LegendsNexus.Alley.Editor
             return packagePath;
         }
 
-        /* ─── queue processing, one plot at a time ─── */
+        /* ─── queue processing, placement only, assets land during the batch unpack ─── */
 
         private static void ProcessNext()
         {
@@ -313,6 +479,14 @@ namespace LegendsNexus.Alley.Editor
             }
 
             ImportItem item = queue.items[0];
+
+            // a domain reload can land between unpack and refresh, pick the batch back up
+            if (item.stage == "pending")
+            {
+                ExtractAllAndPlace();
+                return;
+            }
+
             BoothLocation location = FindLocationByPath(item.locationPath);
             if (location == null)
             {
@@ -321,76 +495,14 @@ namespace LegendsNexus.Alley.Editor
                 return;
             }
 
-            if (item.stage == "place")
-            {
-                PlaceCurrent(queue, item, location);
-                return;
-            }
-
-            if (item.stage == "importing" && PrefabPathFor(item) is string existing && AssetDatabase.LoadAssetAtPath<GameObject>(existing) != null)
-            {
-                PlaceCurrent(queue, item, location);
-                return;
-            }
-
-            if (!File.Exists(item.packagePath))
-            {
-                Log($"Lost the downloaded package for {item.communityName}, run the sync again.");
-                Advance(queue);
-                return;
-            }
-
-            // clear the old copy first so the fresh import cant tangle with it
-            for (int i = location.transform.childCount - 1; i >= 0; i--)
-            {
-                UnityEngine.Object.DestroyImmediate(location.transform.GetChild(i).gameObject);
-            }
-            string oldFolder = ImportRoot + "/" + item.communityId;
-            if (AssetDatabase.IsValidFolder(oldFolder)) AssetDatabase.DeleteAsset(oldFolder);
-
-            item.stage = "importing";
-            ImportQueue.Save(queue);
-            AssetDatabase.ImportPackage(item.packagePath, false);
-        }
-
-        private static void OnImportCompleted(string packageName)
-        {
-            ImportQueueData queue = ImportQueue.Load();
-            if (queue.items.Count == 0) return;
-            ImportItem item = queue.items[0];
-            if (item.stage != "importing") return;
-
-            item.stage = "place";
-            ImportQueue.Save(queue);
-
-            BoothLocation location = FindLocationByPath(item.locationPath);
-            if (location == null)
-            {
-                Log($"Plot for {item.communityName} disappeared from the scene, skipping it.");
-                Advance(queue);
-                return;
-            }
             PlaceCurrent(queue, item, location);
-        }
-
-        private static void OnImportFailed(string packageName, string error)
-        {
-            ImportQueueData queue = ImportQueue.Load();
-            if (queue.items.Count == 0) return;
-            Log($"Import failed for {queue.items[0].communityName}: {error}");
-            Advance(queue);
-        }
-
-        private static void OnImportCancelled(string packageName)
-        {
-            OnImportFailed(packageName, "cancelled");
         }
 
         private static void PlaceCurrent(ImportQueueData queue, ImportItem item, BoothLocation location)
         {
             try
             {
-                string prefabPath = MoveImportedAssets(item);
+                string prefabPath = ImportRoot + "/" + FolderNameFor(item) + "/" + item.prefabName + ".prefab";
                 StripBoothMarkers(prefabPath);
                 var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
                 if (prefab == null) throw new Exception($"could not find the booth prefab at {prefabPath}");
@@ -431,19 +543,6 @@ namespace LegendsNexus.Alley.Editor
             Log($"Heads up: {item.communityName} uses shaders this project does not have: {string.Join(", ", missing)}. Import them or their booth will render broken.");
         }
 
-        private static string MoveImportedAssets(ImportItem item)
-        {
-            string target = ImportRoot + "/" + FolderNameFor(item);
-            if (AssetDatabase.IsValidFolder(ExportFolder))
-            {
-                EnsureFolder(ImportRoot);
-                if (AssetDatabase.IsValidFolder(target)) AssetDatabase.DeleteAsset(target);
-                string error = AssetDatabase.MoveAsset(ExportFolder, target);
-                if (!string.IsNullOrEmpty(error)) throw new Exception(error);
-            }
-            return target + "/" + item.prefabName + ".prefab";
-        }
-
         // readable folder per community, finding a booth among 50 should not
         // mean scanning random ids
         private static string FolderNameFor(ImportItem item)
@@ -451,19 +550,6 @@ namespace LegendsNexus.Alley.Editor
             if (!string.IsNullOrEmpty(item.communitySlug)) return item.communitySlug;
             string safe = SanitizeName(item.communityName);
             return string.IsNullOrEmpty(safe) ? item.communityId : safe;
-        }
-
-        private static void EnsureFolder(string path)
-        {
-            if (AssetDatabase.IsValidFolder(path)) return;
-            string[] parts = path.Split('/');
-            string current = parts[0];
-            for (int i = 1; i < parts.Length; i++)
-            {
-                string next = current + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next)) AssetDatabase.CreateFolder(current, parts[i]);
-                current = next;
-            }
         }
 
         // pull the creator marker out of the prefab asset itself so placed
@@ -486,15 +572,6 @@ namespace LegendsNexus.Alley.Editor
             {
                 PrefabUtility.UnloadPrefabContents(contents);
             }
-        }
-
-        private static string PrefabPathFor(ImportItem item)
-        {
-            string moved = ImportRoot + "/" + FolderNameFor(item) + "/" + item.prefabName + ".prefab";
-            if (AssetDatabase.LoadAssetAtPath<GameObject>(moved) != null) return moved;
-            string fresh = ExportFolder + "/" + item.prefabName + ".prefab";
-            if (AssetDatabase.LoadAssetAtPath<GameObject>(fresh) != null) return fresh;
-            return null;
         }
 
         private static void Advance(ImportQueueData queue)
