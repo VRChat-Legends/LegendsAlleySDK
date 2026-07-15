@@ -46,6 +46,12 @@ namespace LegendsNexus.Alley.Editor
         private Button _staffSyncButton;
         private Label _staffPlotsSummary;
         private ScrollView _staffLog;
+        private VisualElement _checkWrap;
+        private VisualElement _uploadWrap;
+        private VisualElement _ticker;
+        private VisualElement _statusBar;
+        private IVisualElementScheduledItem _tickerAnim;
+        private readonly HashSet<VisualElement> _shownCards = new HashSet<VisualElement>();
 
         private void OnEnable()
         {
@@ -88,6 +94,10 @@ namespace LegendsNexus.Alley.Editor
             _staffSyncButton = rootVisualElement.Q<Button>("staff-sync-button");
             _staffPlotsSummary = rootVisualElement.Q<Label>("staff-plots-summary");
             _staffLog = rootVisualElement.Q<ScrollView>("staff-log");
+            _checkWrap = rootVisualElement.Q("check-wrap");
+            _uploadWrap = rootVisualElement.Q("upload-wrap");
+            _ticker = rootVisualElement.Q("status-ticker");
+            _statusBar = rootVisualElement.Q("status-bar");
 
             LoadHeaderLogo();
 
@@ -112,8 +122,10 @@ namespace LegendsNexus.Alley.Editor
         private async Task TryResume()
         {
             SetStatus("Checking your session...");
+            SetTicker(true);
             bool resumed = await AlleySession.Resume();
             if (this == null) return;
+            SetTicker(false);
             SetStatus(resumed ? "Welcome back!" : "Sign in to get started.");
             RefreshUi();
         }
@@ -126,6 +138,7 @@ namespace LegendsNexus.Alley.Editor
             _loginButton.SetEnabled(false);
             _loginCancelButton.style.display = DisplayStyle.Flex;
             SetStatus("Waiting for the browser sign in...");
+            SetTicker(true);
             try
             {
                 await AlleySession.SignIn(_loginCancel.Token);
@@ -146,6 +159,7 @@ namespace LegendsNexus.Alley.Editor
                 _loginCancel = null;
                 if (this != null)
                 {
+                    SetTicker(false);
                     _loginButton.SetEnabled(true);
                     _loginCancelButton.style.display = DisplayStyle.None;
                     RefreshUi();
@@ -158,9 +172,11 @@ namespace LegendsNexus.Alley.Editor
             if (_busy) return;
             _busy = true;
             SetStatus("Signing out...");
+            SetTicker(true);
             await AlleySession.SignOut();
             _busy = false;
             if (this == null) return;
+            SetTicker(false);
             SetStatus("Signed out.");
             RefreshUi();
         }
@@ -175,11 +191,12 @@ namespace LegendsNexus.Alley.Editor
             bool signedIn = AlleySession.IsSignedIn;
             bool hasCommunity = signedIn && AlleySession.Community != null;
             bool isStaff = signedIn && AlleySession.IsStaff;
-            _loginCard.style.display = signedIn ? DisplayStyle.None : DisplayStyle.Flex;
-            _communityCard.style.display = hasCommunity ? DisplayStyle.Flex : DisplayStyle.None;
-            _eventCard.style.display = signedIn ? DisplayStyle.Flex : DisplayStyle.None;
-            _boothCard.style.display = hasCommunity ? DisplayStyle.Flex : DisplayStyle.None;
-            _staffCard.style.display = isStaff ? DisplayStyle.Flex : DisplayStyle.None;
+            int stagger = 0;
+            ShowCard(_loginCard, !signedIn, ref stagger);
+            ShowCard(_communityCard, hasCommunity, ref stagger);
+            ShowCard(_eventCard, signedIn, ref stagger);
+            ShowCard(_boothCard, hasCommunity, ref stagger);
+            ShowCard(_staffCard, isStaff, ref stagger);
             _signOutButton.style.display = signedIn ? DisplayStyle.Flex : DisplayStyle.None;
             _loginCancelButton.style.display = DisplayStyle.None;
             _uploadProgress.style.display = DisplayStyle.None;
@@ -214,6 +231,52 @@ namespace LegendsNexus.Alley.Editor
             RefreshBooths();
         }
 
+        // cards drop in with a slight stagger instead of just popping into existence
+        private void ShowCard(VisualElement card, bool visible, ref int stagger)
+        {
+            bool wasShown = _shownCards.Contains(card);
+            card.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+            if (!visible)
+            {
+                _shownCards.Remove(card);
+                return;
+            }
+            if (wasShown) return;
+            _shownCards.Add(card);
+            card.AddToClassList("alley-enter");
+            int delay = 30 + stagger;
+            stagger += 60;
+            card.schedule.Execute(() => card.RemoveFromClassList("alley-enter")).StartingIn(delay);
+        }
+
+        private static void AnimateRow(VisualElement row, int index)
+        {
+            row.AddToClassList("alley-row-enter");
+            row.schedule.Execute(() => row.RemoveFromClassList("alley-row-enter")).StartingIn(30 + index * 25);
+        }
+
+        // pink segment sliding along the status bar while something is going on
+        private void SetTicker(bool on)
+        {
+            if (_ticker == null) return;
+            _ticker.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
+            if (!on)
+            {
+                _tickerAnim?.Pause();
+                return;
+            }
+            if (_tickerAnim == null)
+            {
+                _tickerAnim = _ticker.schedule.Execute(() =>
+                {
+                    float track = _statusBar.resolvedStyle.width - 30f;
+                    if (track <= 0f) return;
+                    _ticker.style.left = Mathf.PingPong((float)(EditorApplication.timeSinceStartup * 260.0), track);
+                }).Every(16);
+            }
+            _tickerAnim.Resume();
+        }
+
         private void RefreshStaffSummary()
         {
             BoothLocation[] locations = BoothImporter.FindLocations();
@@ -235,6 +298,7 @@ namespace LegendsNexus.Alley.Editor
             if (BoothImporter.IsRunning || AlleySession.SelectedEvent == null) return;
             _staffSyncButton.SetEnabled(false);
             _staffLog.Clear();
+            SetTicker(true);
             try
             {
                 await BoothImporter.Sync(AlleySession.SelectedEvent);
@@ -250,7 +314,11 @@ namespace LegendsNexus.Alley.Editor
             }
             finally
             {
-                if (this != null) RefreshStaffSummary();
+                if (this != null)
+                {
+                    SetTicker(false);
+                    RefreshStaffSummary();
+                }
             }
         }
 
@@ -259,6 +327,7 @@ namespace LegendsNexus.Alley.Editor
             if (this == null || _staffLog == null) return;
             var line = new Label(message);
             line.AddToClassList("alley-staff-log-line");
+            AnimateRow(line, 0);
             _staffLog.Add(line);
             _staffLog.schedule.Execute(() => _staffLog.scrollOffset = new Vector2(0, float.MaxValue));
             RefreshStaffSummary();
@@ -300,8 +369,8 @@ namespace LegendsNexus.Alley.Editor
             bool any = names.Count > 0;
             _noBoothMessage.style.display = any ? DisplayStyle.None : DisplayStyle.Flex;
             _boothDropdown.style.display = any ? DisplayStyle.Flex : DisplayStyle.None;
-            _checkButton.style.display = any ? DisplayStyle.Flex : DisplayStyle.None;
-            _uploadButton.style.display = any ? DisplayStyle.Flex : DisplayStyle.None;
+            _checkWrap.style.display = any ? DisplayStyle.Flex : DisplayStyle.None;
+            _uploadWrap.style.display = any ? DisplayStyle.Flex : DisplayStyle.None;
             _boothDropdown.choices = names;
             if (any && (_boothDropdown.index < 0 || _boothDropdown.index >= names.Count))
             {
@@ -352,6 +421,7 @@ namespace LegendsNexus.Alley.Editor
             {
                 var row = new Label(blocker);
                 row.AddToClassList("alley-blocker-row");
+                AnimateRow(row, _blockers.childCount);
                 _blockers.Add(row);
             }
 
@@ -367,6 +437,7 @@ namespace LegendsNexus.Alley.Editor
                 value.AddToClassList("alley-check-value");
                 row.Add(label);
                 row.Add(value);
+                AnimateRow(row, _checklist.childCount);
                 _checklist.Add(row);
 
                 if (!string.IsNullOrEmpty(check.Hint))
@@ -382,9 +453,9 @@ namespace LegendsNexus.Alley.Editor
                 && deadline.ToUniversalTime() < DateTime.UtcNow;
 
             _uploadButton.SetEnabled(_report.CanUpload && !deadlinePassed && !_busy);
-            _uploadButton.text = deadlinePassed ? "Upload deadline passed"
-                : _report.CanUpload ? "Build and upload"
-                : "Fix the issues above first";
+            _uploadButton.text = deadlinePassed ? "UPLOAD DEADLINE PASSED"
+                : _report.CanUpload ? "BUILD + UPLOAD"
+                : "FIX THE ISSUES ABOVE FIRST";
         }
 
         private async void StartUpload()
@@ -405,6 +476,7 @@ namespace LegendsNexus.Alley.Editor
             _busy = true;
             _uploadButton.SetEnabled(false);
             _uploadProgress.style.display = DisplayStyle.Flex;
+            SetTicker(true);
             string zipPath = null;
             try
             {
@@ -440,6 +512,7 @@ namespace LegendsNexus.Alley.Editor
                 }
                 if (this != null)
                 {
+                    SetTicker(false);
                     _uploadProgress.style.display = DisplayStyle.None;
                     RunCheck();
                 }
