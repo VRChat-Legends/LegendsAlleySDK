@@ -26,14 +26,22 @@ namespace LegendsNexus.Alley
             Matrix4x4 previous = Gizmos.matrix;
             Gizmos.matrix = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one);
 
-            // floor footprint plus a marker for which way the booth faces
             Gizmos.color = new Color(0.42f, 0.27f, 0.76f, 0.6f);
             Gizmos.DrawWireCube(new Vector3(0f, BoundsLimit.y * 0.5f, 0f), BoundsLimit);
-            Gizmos.color = new Color(1f, 0f, 0.48f, 0.8f);
-            Gizmos.DrawLine(Vector3.zero, new Vector3(0f, 0f, BoundsLimit.z * 0.5f));
-            Gizmos.DrawWireSphere(new Vector3(0f, 0f, BoundsLimit.z * 0.5f), 0.12f);
+
+            // front arrow so creators build facing the walkway
+            Gizmos.color = new Color(1f, 0f, 0.48f, 0.9f);
+            Vector3 tip = new Vector3(0f, 0f, BoundsLimit.z * 0.5f);
+            Gizmos.DrawLine(Vector3.zero, tip);
+            Gizmos.DrawLine(tip, tip + new Vector3(0.3f, 0f, -0.5f));
+            Gizmos.DrawLine(tip, tip + new Vector3(-0.3f, 0f, -0.5f));
 
             Gizmos.matrix = previous;
+
+            var style = new GUIStyle();
+            style.normal.textColor = new Color(1f, 0.2f, 0.6f);
+            style.fontStyle = FontStyle.Bold;
+            UnityEditor.Handles.Label(transform.TransformPoint(tip + new Vector3(0f, 0.05f, 0.2f)), "FRONT", style);
         }
 
         private void OnDrawGizmosSelected()

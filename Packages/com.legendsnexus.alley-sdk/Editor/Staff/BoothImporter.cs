@@ -389,17 +389,13 @@ namespace LegendsNexus.Alley.Editor
             try
             {
                 string prefabPath = MoveImportedAssets(item);
+                StripBoothMarkers(prefabPath);
                 var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
                 if (prefab == null) throw new Exception($"could not find the booth prefab at {prefabPath}");
 
                 var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, location.transform);
                 instance.transform.localPosition = Vector3.zero;
                 instance.transform.localRotation = Quaternion.identity;
-
-                foreach (LegendsBooth marker in instance.GetComponentsInChildren<LegendsBooth>(true))
-                {
-                    UnityEngine.Object.DestroyImmediate(marker, true);
-                }
 
                 location.placedCommunityId = item.communityId;
                 location.placedCommunityName = item.communityName;
@@ -427,6 +423,28 @@ namespace LegendsNexus.Alley.Editor
                 if (!string.IsNullOrEmpty(error)) throw new Exception(error);
             }
             return target + "/" + item.prefabName + ".prefab";
+        }
+
+        // pull the creator marker out of the prefab asset itself so placed
+        // instances dont show a removed component override in the inspector
+        private static void StripBoothMarkers(string prefabPath)
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath) == null) return;
+            GameObject contents = PrefabUtility.LoadPrefabContents(prefabPath);
+            try
+            {
+                LegendsBooth[] markers = contents.GetComponentsInChildren<LegendsBooth>(true);
+                if (markers.Length == 0) return;
+                foreach (LegendsBooth marker in markers)
+                {
+                    UnityEngine.Object.DestroyImmediate(marker);
+                }
+                PrefabUtility.SaveAsPrefabAsset(contents, prefabPath);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(contents);
+            }
         }
 
         private static string PrefabPathFor(ImportItem item)
