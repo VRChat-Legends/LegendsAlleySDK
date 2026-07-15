@@ -20,10 +20,11 @@ namespace LegendsNexus.Alley.Editor
             window.minSize = new Vector2(340, 560);
         }
 
-        private VisualElement _loginCard;
-        private VisualElement _communityCard;
-        private VisualElement _eventCard;
-        private VisualElement _boothCard;
+        private VisualElement _eventStrip;
+        private Dictionary<string, Button> _tabButtons;
+        private Dictionary<string, VisualElement> _tabPages;
+        private string _currentTab;
+        private static readonly string[] TabOrder = { "signin", "booth", "community", "staff", "settings" };
         private Button _loginButton;
         private Button _loginCancelButton;
         private Button _signOutButton;
@@ -42,7 +43,6 @@ namespace LegendsNexus.Alley.Editor
         private BoothReport _report;
         private CancellationTokenSource _loginCancel;
         private bool _busy;
-        private VisualElement _staffCard;
         private Button _staffSyncButton;
         private Label _staffPlotsSummary;
         private ScrollView _staffLog;
@@ -52,7 +52,6 @@ namespace LegendsNexus.Alley.Editor
         private VisualElement _statusBar;
         private Button _logoButton;
         private IVisualElementScheduledItem _tickerAnim;
-        private readonly HashSet<VisualElement> _shownCards = new HashSet<VisualElement>();
 
         private void OnEnable()
         {
@@ -74,10 +73,6 @@ namespace LegendsNexus.Alley.Editor
             tree.CloneTree(rootVisualElement);
             rootVisualElement.styleSheets.Add(styles);
 
-            _loginCard = rootVisualElement.Q("login-card");
-            _communityCard = rootVisualElement.Q("community-card");
-            _eventCard = rootVisualElement.Q("event-card");
-            _boothCard = rootVisualElement.Q("booth-card");
             _loginButton = rootVisualElement.Q<Button>("login-button");
             _loginCancelButton = rootVisualElement.Q<Button>("login-cancel-button");
             _signOutButton = rootVisualElement.Q<Button>("signout-button");
@@ -91,7 +86,6 @@ namespace LegendsNexus.Alley.Editor
             _checklist = rootVisualElement.Q("checklist");
             _blockers = rootVisualElement.Q("blockers");
             _uploadProgress = rootVisualElement.Q<ProgressBar>("upload-progress");
-            _staffCard = rootVisualElement.Q("staff-card");
             _staffSyncButton = rootVisualElement.Q<Button>("staff-sync-button");
             _staffPlotsSummary = rootVisualElement.Q<Label>("staff-plots-summary");
             _staffLog = rootVisualElement.Q<ScrollView>("staff-log");
@@ -100,6 +94,20 @@ namespace LegendsNexus.Alley.Editor
             _ticker = rootVisualElement.Q("status-ticker");
             _statusBar = rootVisualElement.Q("status-bar");
             _logoButton = rootVisualElement.Q<Button>("logo-button");
+            _eventStrip = rootVisualElement.Q("event-strip");
+
+            _tabButtons = new Dictionary<string, Button>();
+            _tabPages = new Dictionary<string, VisualElement>();
+            foreach (string id in TabOrder)
+            {
+                _tabButtons[id] = rootVisualElement.Q<Button>("tab-" + id);
+                _tabPages[id] = rootVisualElement.Q("page-" + id);
+                string captured = id;
+                _tabButtons[id].clicked += () =>
+                {
+                    if (_currentTab != captured) SelectTab(captured);
+                };
+            }
 
             LoadHeaderLogo();
 
@@ -119,6 +127,11 @@ namespace LegendsNexus.Alley.Editor
             rootVisualElement.Q<Label>("version-label").text = "SDK version " + AlleyConfig.SdkVersion;
 
             RefreshUi();
+            string savedTab = SessionState.GetString("LegendsAlley.Tab", "");
+            if (_tabPages.ContainsKey(savedTab) && _tabButtons[savedTab].style.display.value != DisplayStyle.None)
+            {
+                SelectTab(savedTab, false);
+            }
             _ = TryResume();
         }
 
@@ -245,15 +258,27 @@ namespace LegendsNexus.Alley.Editor
             bool signedIn = AlleySession.IsSignedIn;
             bool hasCommunity = signedIn && AlleySession.Community != null;
             bool isStaff = signedIn && AlleySession.IsStaff;
-            int stagger = 0;
-            ShowCard(_loginCard, !signedIn, ref stagger);
-            ShowCard(_communityCard, hasCommunity, ref stagger);
-            ShowCard(_eventCard, signedIn, ref stagger);
-            ShowCard(_boothCard, hasCommunity, ref stagger);
-            ShowCard(_staffCard, isStaff, ref stagger);
+
+            _tabButtons["signin"].style.display = signedIn ? DisplayStyle.None : DisplayStyle.Flex;
+            _tabButtons["booth"].style.display = hasCommunity ? DisplayStyle.Flex : DisplayStyle.None;
+            _tabButtons["community"].style.display = hasCommunity ? DisplayStyle.Flex : DisplayStyle.None;
+            _tabButtons["staff"].style.display = isStaff ? DisplayStyle.Flex : DisplayStyle.None;
+
+            _eventStrip.style.display = signedIn ? DisplayStyle.Flex : DisplayStyle.None;
             _signOutButton.style.display = signedIn ? DisplayStyle.Flex : DisplayStyle.None;
             _loginCancelButton.style.display = DisplayStyle.None;
             _uploadProgress.style.display = DisplayStyle.None;
+
+            bool currentValid = _currentTab == "settings"
+                || (_currentTab == "signin" && !signedIn)
+                || (_currentTab == "booth" && hasCommunity)
+                || (_currentTab == "community" && hasCommunity)
+                || (_currentTab == "staff" && isStaff);
+            if (!currentValid)
+            {
+                string fallback = !signedIn ? "signin" : hasCommunity ? "booth" : isStaff ? "staff" : "settings";
+                SelectTab(fallback, false);
+            }
 
             if (!signedIn) return;
 
@@ -285,22 +310,33 @@ namespace LegendsNexus.Alley.Editor
             RefreshBooths();
         }
 
-        // cards drop in with a slight stagger instead of just popping into existence
-        private void ShowCard(VisualElement card, bool visible, ref int stagger)
+        // switches the active tab, sliding the page in from the travel direction
+        private void SelectTab(string id, bool animate = true)
         {
-            bool wasShown = _shownCards.Contains(card);
-            card.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
-            if (!visible)
+            int oldIndex = Array.IndexOf(TabOrder, _currentTab);
+            int newIndex = Array.IndexOf(TabOrder, id);
+            if (newIndex < 0) return;
+            bool enterFromRight = oldIndex < 0 || newIndex >= oldIndex;
+            _currentTab = id;
+            SessionState.SetString("LegendsAlley.Tab", id);
+
+            foreach (string tabId in TabOrder)
             {
-                _shownCards.Remove(card);
-                return;
+                bool active = tabId == id;
+                _tabButtons[tabId].EnableInClassList("alley-tab-active", active);
+                _tabPages[tabId].style.display = active ? DisplayStyle.Flex : DisplayStyle.None;
             }
-            if (wasShown) return;
-            _shownCards.Add(card);
-            card.AddToClassList("alley-enter");
-            int delay = 30 + stagger;
-            stagger += 60;
-            card.schedule.Execute(() => card.RemoveFromClassList("alley-enter")).StartingIn(delay);
+
+            if (animate && oldIndex != newIndex)
+            {
+                VisualElement page = _tabPages[id];
+                string enterClass = enterFromRight ? "alley-page-enter-right" : "alley-page-enter-left";
+                page.AddToClassList(enterClass);
+                page.schedule.Execute(() => page.RemoveFromClassList(enterClass)).StartingIn(20);
+            }
+
+            if (id == "booth" && AlleySession.IsSignedIn) RefreshBooths();
+            if (id == "staff" && AlleySession.IsSignedIn) RefreshStaffSummary();
         }
 
         private static void AnimateRow(VisualElement row, int index)
@@ -409,7 +445,7 @@ namespace LegendsNexus.Alley.Editor
             string deadline = "";
             if (DateTime.TryParse(selected.uploadDeadline, out DateTime parsed))
             {
-                deadline = $"Upload deadline: {parsed.ToLocalTime():MMM d, yyyy HH:mm}";
+                deadline = $"DUE {parsed.ToLocalTime():MMM d, HH:mm}".ToUpperInvariant();
             }
             _eventInfo.text = deadline;
         }

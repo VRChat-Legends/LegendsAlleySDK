@@ -15,73 +15,93 @@
             <ui:VisualElement class="alley-strip-seg alley-strip-teal" />
         </ui:VisualElement>
 
+        <ui:VisualElement name="navbar" class="alley-navbar">
+            <ui:Button name="tab-signin" text="SIGN IN" class="alley-tab alley-tab-pink" />
+            <ui:Button name="tab-booth" text="BOOTH" class="alley-tab alley-tab-pink" />
+            <ui:Button name="tab-community" text="COMMUNITY" class="alley-tab alley-tab-purple" />
+            <ui:Button name="tab-staff" text="STAFF" class="alley-tab alley-tab-gold" />
+            <ui:Button name="tab-settings" text="SETTINGS" class="alley-tab alley-tab-teal" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="event-strip" class="alley-event-strip">
+            <ui:Label text="EVENT" class="alley-event-strip-label" />
+            <ui:DropdownField name="event-dropdown" class="alley-event-dropdown" />
+            <ui:Label name="event-info" text="" class="alley-event-info" />
+        </ui:VisualElement>
+
         <ui:ScrollView name="content" class="alley-content" horizontal-scroller-visibility="Hidden">
-            <ui:VisualElement name="login-card" class="alley-card-shadow alley-card-shadow-purple alley-login-wrap">
-                <ui:VisualElement class="alley-card alley-card-purple">
-                    <ui:Label text="WELCOME TO THE ALLEY" class="alley-card-title" />
-                    <ui:Label name="login-blurb" class="alley-body"
-                        text="Sign in with the Discord account that owns your approved community to check and upload your booth." />
-                    <ui:VisualElement class="alley-shadow alley-shadow-purple">
-                        <ui:Button name="login-button" text="SIGN IN WITH DISCORD" class="alley-button-primary" />
-                    </ui:VisualElement>
-                    <ui:Button name="login-cancel-button" text="CANCEL" class="alley-button-ghost alley-cancel" />
-                </ui:VisualElement>
-            </ui:VisualElement>
-
-            <ui:VisualElement name="community-card" class="alley-card-shadow alley-card-shadow-purple">
-                <ui:VisualElement class="alley-card alley-card-purple">
-                    <ui:VisualElement class="alley-community-row">
-                        <ui:VisualElement name="community-logo" class="alley-community-logo" />
-                        <ui:VisualElement class="alley-community-text">
-                            <ui:Label name="community-name" text="" class="alley-card-title" />
-                            <ui:Label name="community-owner" text="" class="alley-muted" />
+            <ui:VisualElement name="page-signin" class="alley-page">
+                <ui:VisualElement class="alley-card-shadow alley-card-shadow-purple alley-login-wrap">
+                    <ui:VisualElement class="alley-card alley-card-purple">
+                        <ui:Label text="WELCOME TO THE ALLEY" class="alley-card-title" />
+                        <ui:Label name="login-blurb" class="alley-body"
+                            text="Sign in with the Discord account that owns your approved community to check and upload your booth." />
+                        <ui:VisualElement class="alley-shadow alley-shadow-purple">
+                            <ui:Button name="login-button" text="SIGN IN WITH DISCORD" class="alley-button-primary" />
                         </ui:VisualElement>
+                        <ui:Button name="login-cancel-button" text="CANCEL" class="alley-button-ghost alley-cancel" />
                     </ui:VisualElement>
-                    <ui:Button name="logo-button" text="CHANGE LOGO" class="alley-button-ghost alley-logo-button" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:VisualElement name="event-card" class="alley-card-shadow alley-card-shadow-teal">
-                <ui:VisualElement class="alley-card alley-card-teal">
-                    <ui:Label text="EVENT" class="alley-section-label alley-label-teal" />
-                    <ui:DropdownField name="event-dropdown" />
-                    <ui:Label name="event-info" text="" class="alley-muted" />
+            <ui:VisualElement name="page-booth" class="alley-page">
+                <ui:VisualElement class="alley-card-shadow alley-card-shadow-pink">
+                    <ui:VisualElement class="alley-card alley-card-pink">
+                        <ui:Label text="YOUR BOOTH" class="alley-section-label alley-label-pink" />
+                        <ui:Label name="no-booth-message" class="alley-body"
+                            text="No booth found in the open scene. Add the Legends Booth component to your booth's root object." />
+                        <ui:DropdownField name="booth-dropdown" />
+                        <ui:VisualElement name="check-wrap" class="alley-shadow alley-shadow-teal">
+                            <ui:Button name="check-button" text="CHECK BOOTH" class="alley-button-secondary" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="blockers" class="alley-blockers" />
+                        <ui:VisualElement name="checklist" class="alley-checklist" />
+                        <ui:VisualElement name="upload-wrap" class="alley-shadow alley-shadow-purple">
+                            <ui:Button name="upload-button" text="BUILD + UPLOAD" class="alley-button-primary" />
+                        </ui:VisualElement>
+                        <ui:ProgressBar name="upload-progress" class="alley-progress" />
+                    </ui:VisualElement>
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:VisualElement name="booth-card" class="alley-card-shadow alley-card-shadow-pink">
-                <ui:VisualElement class="alley-card alley-card-pink">
-                    <ui:Label text="YOUR BOOTH" class="alley-section-label alley-label-pink" />
-                    <ui:Label name="no-booth-message" class="alley-body"
-                        text="No booth found in the open scene. Add the Legends Booth component to your booth's root object." />
-                    <ui:DropdownField name="booth-dropdown" />
-                    <ui:VisualElement name="check-wrap" class="alley-shadow alley-shadow-teal">
-                        <ui:Button name="check-button" text="CHECK BOOTH" class="alley-button-secondary" />
+            <ui:VisualElement name="page-community" class="alley-page">
+                <ui:VisualElement class="alley-card-shadow alley-card-shadow-purple">
+                    <ui:VisualElement class="alley-card alley-card-purple">
+                        <ui:Label text="YOUR COMMUNITY" class="alley-section-label alley-label-purple" />
+                        <ui:VisualElement class="alley-community-row">
+                            <ui:VisualElement name="community-logo" class="alley-community-logo" />
+                            <ui:VisualElement class="alley-community-text">
+                                <ui:Label name="community-name" text="" class="alley-card-title" />
+                                <ui:Label name="community-owner" text="" class="alley-muted" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:Button name="logo-button" text="CHANGE LOGO" class="alley-button-ghost alley-logo-button" />
                     </ui:VisualElement>
-                    <ui:VisualElement name="blockers" class="alley-blockers" />
-                    <ui:VisualElement name="checklist" class="alley-checklist" />
-                    <ui:VisualElement name="upload-wrap" class="alley-shadow alley-shadow-purple">
-                        <ui:Button name="upload-button" text="BUILD + UPLOAD" class="alley-button-primary" />
-                    </ui:VisualElement>
-                    <ui:ProgressBar name="upload-progress" class="alley-progress" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:VisualElement name="staff-card" class="alley-card-shadow alley-card-shadow-gold">
-                <ui:VisualElement class="alley-card alley-card-gold">
-                    <ui:Label text="STAFF TOOLS" class="alley-section-label alley-label-gold" />
-                    <ui:Label name="staff-plots-summary" text="" class="alley-body" />
-                    <ui:VisualElement class="alley-shadow alley-shadow-purple">
-                        <ui:Button name="staff-sync-button" text="SYNC BOOTHS TO PLOTS" class="alley-button-primary alley-button-staff" />
+            <ui:VisualElement name="page-staff" class="alley-page">
+                <ui:VisualElement class="alley-card-shadow alley-card-shadow-gold">
+                    <ui:VisualElement class="alley-card alley-card-gold">
+                        <ui:Label text="STAFF TOOLS" class="alley-section-label alley-label-gold" />
+                        <ui:Label name="staff-plots-summary" text="" class="alley-body" />
+                        <ui:VisualElement class="alley-shadow alley-shadow-purple">
+                            <ui:Button name="staff-sync-button" text="SYNC BOOTHS TO PLOTS" class="alley-button-primary alley-button-staff" />
+                        </ui:VisualElement>
+                        <ui:ScrollView name="staff-log" class="alley-staff-log" />
                     </ui:VisualElement>
-                    <ui:ScrollView name="staff-log" class="alley-staff-log" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:Foldout name="settings-foldout" text="SETTINGS" value="false" class="alley-settings">
-                <ui:TextField name="api-base-field" label="Server" />
-                <ui:Label name="version-label" text="" class="alley-muted" />
-            </ui:Foldout>
+            <ui:VisualElement name="page-settings" class="alley-page">
+                <ui:VisualElement class="alley-card-shadow alley-card-shadow-teal">
+                    <ui:VisualElement class="alley-card alley-card-teal">
+                        <ui:Label text="SETTINGS" class="alley-section-label alley-label-teal" />
+                        <ui:TextField name="api-base-field" label="Server" />
+                        <ui:Label name="version-label" text="" class="alley-muted" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
         </ui:ScrollView>
 
         <ui:VisualElement name="status-bar" class="alley-status-bar">
