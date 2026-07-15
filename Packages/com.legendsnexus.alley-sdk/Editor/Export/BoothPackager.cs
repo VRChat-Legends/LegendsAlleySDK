@@ -24,6 +24,10 @@ namespace LegendsNexus.Alley.Editor
             {
                 duplicate = UnityEngine.Object.Instantiate(booth.gameObject);
                 duplicate.name = safeName;
+                // remember how the scene camera frames the booth before the copy
+                // moves, creators aim Main Camera to pick their own preview shot
+                Pose? previewPose = GetPreviewPose(booth.transform);
+                float previewFov = Camera.main != null ? Camera.main.fieldOfView : 45f;
                 // canonical pose so the plot's own transform decides where the booth
                 // sits and which way the front faces at import time
                 duplicate.transform.position = Vector3.zero;
@@ -43,7 +47,9 @@ namespace LegendsNexus.Alley.Editor
                     Path.Combine(stagingDir, "booth.unitypackage"),
                     ExportPackageOptions.IncludeDependencies);
 
-                File.WriteAllBytes(Path.Combine(stagingDir, "preview.png"), CapturePreview(duplicate));
+                // park the copy away from the scene so the preview only shows the booth
+                duplicate.transform.position = new Vector3(0f, 4000f, 0f);
+                File.WriteAllBytes(Path.Combine(stagingDir, "preview.png"), CapturePreview(duplicate, previewPose, previewFov));
 
                 var metadata = new BoothMetadataPayload
                 {
@@ -98,7 +104,18 @@ namespace LegendsNexus.Alley.Editor
             }
         }
 
-        private static byte[] CapturePreview(GameObject root)
+        // camera pose relative to the booth, so the same framing works on the
+        // export copy wherever it ends up
+        private static Pose? GetPreviewPose(Transform booth)
+        {
+            Camera camera = Camera.main;
+            if (camera == null) return null;
+            return new Pose(
+                booth.InverseTransformPoint(camera.transform.position),
+                Quaternion.Inverse(booth.rotation) * camera.transform.rotation);
+        }
+
+        private static byte[] CapturePreview(GameObject root, Pose? framing, float fov)
         {
             const int size = 512;
 
@@ -111,14 +128,23 @@ namespace LegendsNexus.Alley.Editor
             {
                 camera.backgroundColor = new Color(0.04f, 0.04f, 0.04f, 1f);
                 camera.clearFlags = CameraClearFlags.SolidColor;
-                camera.fieldOfView = 45f;
 
                 float radius = Mathf.Max(bounds.extents.magnitude, 0.5f);
-                Vector3 direction = new Vector3(1f, 0.7f, 1f).normalized;
-                camera.transform.position = bounds.center + direction * radius * 2.2f;
-                camera.transform.LookAt(bounds.center);
+                if (framing.HasValue)
+                {
+                    camera.fieldOfView = fov;
+                    camera.transform.position = root.transform.TransformPoint(framing.Value.position);
+                    camera.transform.rotation = root.transform.rotation * framing.Value.rotation;
+                }
+                else
+                {
+                    camera.fieldOfView = 45f;
+                    Vector3 direction = new Vector3(1f, 0.7f, 1f).normalized;
+                    camera.transform.position = bounds.center + direction * radius * 2.2f;
+                    camera.transform.LookAt(bounds.center);
+                }
                 camera.nearClipPlane = 0.01f;
-                camera.farClipPlane = radius * 10f;
+                camera.farClipPlane = Mathf.Max(radius * 10f, Vector3.Distance(camera.transform.position, bounds.center) + radius * 4f);
 
                 camera.targetTexture = rt;
                 camera.Render();
