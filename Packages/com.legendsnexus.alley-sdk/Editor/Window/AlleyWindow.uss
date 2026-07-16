@@ -367,13 +367,19 @@
 
 .alley-checklist {
     margin-top: 10px;
+    flex-direction: row;
+    flex-wrap: wrap;
 }
 
+/* small stat cards, value on top and label under it */
 .alley-check-row {
-    flex-direction: row;
-    justify-content: space-between;
-    padding: 5px 8px;
-    margin-bottom: 3px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1;
+    flex-basis: 30%;
+    padding: 9px 6px 7px 6px;
+    margin: 0 2px 5px 2px;
     background-color: #0E1013;
     border-left-width: 3px;
     border-left-color: #2A2D33;
@@ -384,13 +390,18 @@
 .alley-check-fail { border-left-color: #FF007A; }
 
 .alley-check-label {
-    color: #C9CDD3;
-    font-size: 11px;
+    color: #8B919A;
+    font-size: 10px;
+    margin-top: 2px;
+    white-space: normal;
+    -unity-text-align: middle-center;
 }
 
 .alley-check-value {
     -unity-font-style: bold;
-    font-size: 11px;
+    font-size: 12px;
+    white-space: normal;
+    -unity-text-align: middle-center;
 }
 
 .alley-check-pass .alley-check-value { color: #1FD1ED; }
@@ -398,9 +409,10 @@
 .alley-check-fail .alley-check-value { color: #FF33A1; }
 
 .alley-check-hint {
+    width: 100%;
     color: #FF33A1;
     white-space: normal;
-    padding: 2px 8px 6px 11px;
+    padding: 0 8px 6px 8px;
     font-size: 10px;
 }
 

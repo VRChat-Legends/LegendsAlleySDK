@@ -1016,12 +1016,13 @@ namespace LegendsNexus.Alley.Editor
                 row.AddToClassList("alley-check-row");
                 row.AddToClassList("alley-check-" + check.Severity.ToString().ToLower());
 
-                var label = new Label(check.Label);
-                label.AddToClassList("alley-check-label");
+                // number up top, what it means underneath
                 var value = new Label($"{check.Value} / {check.Limit}");
                 value.AddToClassList("alley-check-value");
-                row.Add(label);
+                var label = new Label(check.Label);
+                label.AddToClassList("alley-check-label");
                 row.Add(value);
+                row.Add(label);
                 AnimateRow(row, _checklist.childCount);
                 _checklist.Add(row);
 
