@@ -96,6 +96,12 @@ namespace LegendsNexus.Alley.Editor
                 GameObjectUtility.RemoveMonoBehavioursWithMissingScript(child.gameObject);
             }
 
+            // editor sugar, the VRCAvatarPedestal underneath carries the real settings
+            foreach (AlleyAvatarPedestal helper in root.GetComponentsInChildren<AlleyAvatarPedestal>(true))
+            {
+                UnityEngine.Object.DestroyImmediate(helper);
+            }
+
             foreach (Light light in root.GetComponentsInChildren<Light>(true))
             {
                 if (light.type == LightType.Directional)

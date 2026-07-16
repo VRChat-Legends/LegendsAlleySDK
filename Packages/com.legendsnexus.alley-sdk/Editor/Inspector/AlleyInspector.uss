@@ -7,6 +7,8 @@
 
 .alley-insp-pink { border-left-color: #FF007A; }
 .alley-insp-gold { border-left-color: #FFD700; }
+.alley-insp-purple { border-left-color: #6B46C1; }
+.alley-insp-teal { border-left-color: #1FD1ED; }
 
 .alley-insp-header {
     font-size: 10px;
@@ -17,6 +19,8 @@
 
 .alley-insp-header-pink { color: #FF33A1; }
 .alley-insp-header-gold { color: #FFD700; }
+.alley-insp-header-purple { color: #9B7BD4; }
+.alley-insp-header-teal { color: #1FD1ED; }
 
 .alley-insp .unity-base-field {
     margin: 2px 0;
@@ -77,6 +81,11 @@
 .alley-insp-status-empty {
     border-left-color: #2A2D33;
     color: rgba(255, 255, 255, 0.45);
+}
+
+.alley-insp-status-warn {
+    border-left-color: #FFD700;
+    color: #FFD700;
 }
 
 .alley-insp-button {

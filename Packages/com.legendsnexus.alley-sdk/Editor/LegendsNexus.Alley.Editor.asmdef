@@ -6,6 +6,9 @@
         "VRC.SDKBase",
         "VRC.SDK3",
         "VRC.Udon",
+        "VRC.Udon.Editor",
+        "UdonSharp.Runtime",
+        "UdonSharp.Editor",
         "Unity.TextMeshPro",
         "Unity.ProBuilder"
     ],

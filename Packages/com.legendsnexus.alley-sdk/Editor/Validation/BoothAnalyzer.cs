@@ -265,7 +265,12 @@ namespace LegendsNexus.Alley.Editor
                 string path = AssetDatabase.GetAssetPath(dependency);
                 // editor-only package assets (component icons and the like) never ship
                 bool editorOnly = path.Contains("/Editor Resources/") || path.Contains("/Editor/");
-                if (dependency is Texture texture && !editorOnly) textures.Add(texture);
+                // sdk bundled sprites, unity builtin sprites and the tmp font atlas are
+                // shared by every booth in the event world and deduped at build,
+                // nobody pays for them twice
+                bool sharedSdk = path.Contains("/com.legendsnexus.alley-sdk/") || path.Contains("/TextMesh Pro/")
+                    || path == "Resources/unity_builtin_extra";
+                if (dependency is Texture texture && !editorOnly && !sharedSdk) textures.Add(texture);
                 if (dependency is Mesh mesh) meshes.Add(mesh);
 
                 // audio ships close to its source file size, everything else is
