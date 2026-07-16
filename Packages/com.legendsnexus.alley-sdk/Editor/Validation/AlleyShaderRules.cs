@@ -11,6 +11,8 @@ namespace LegendsNexus.Alley.Editor
         {
             "Standard",
             "Standard (Specular setup)",
+            // vrchat sdk's own avpro screen shader, the bundled video player uses it
+            "Video/RealtimeEmissiveGamma",
         };
 
         private static readonly string[] AllowedPrefixes =
