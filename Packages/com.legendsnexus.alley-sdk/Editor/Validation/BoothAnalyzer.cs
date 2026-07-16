@@ -246,6 +246,27 @@ namespace LegendsNexus.Alley.Editor
 
         private static void CollectBlockers(GameObject root, BoothReport report)
         {
+            int missingScripts = 0;
+            string missingOn = null;
+            foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+            {
+                int count = GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(child.gameObject);
+                if (count == 0) continue;
+                missingScripts += count;
+                if (missingOn == null) missingOn = child.gameObject.name;
+            }
+            if (missingScripts > 0)
+            {
+                report.Rows.Add(new CheckRow
+                {
+                    Label = "Missing scripts",
+                    Value = missingScripts.ToString(),
+                    Limit = "removed at upload",
+                    Severity = CheckSeverity.Warn,
+                    Hint = $"Found {missingScripts} missing script{(missingScripts > 1 ? "s" : "")} (first on \"{missingOn}\"). They get stripped from the upload copy automatically, remove them yourself if that is not what you want.",
+                });
+            }
+
             int probes = root.GetComponentsInChildren<ReflectionProbe>(true).Length;
             if (probes > 0)
             {

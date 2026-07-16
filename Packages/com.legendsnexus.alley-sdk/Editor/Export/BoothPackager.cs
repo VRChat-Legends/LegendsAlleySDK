@@ -43,7 +43,11 @@ namespace LegendsNexus.Alley.Editor
                 }
                 // probuilder booths get baked into one mesh + one atlased material
                 ProBuilderBaker.Bake(duplicate, ExportFolder, safeName);
-                PrefabUtility.SaveAsPrefabAsset(duplicate, prefabPath);
+                PrefabUtility.SaveAsPrefabAsset(duplicate, prefabPath, out bool prefabSaved);
+                if (!prefabSaved)
+                {
+                    throw new InvalidOperationException("Unity refused to save the export prefab. Check the Console for the reason, fix the booth, and upload again.");
+                }
 
                 AssetDatabase.ExportPackage(
                     prefabPath,
@@ -85,6 +89,13 @@ namespace LegendsNexus.Alley.Editor
         // fixes applied to the export copy only, the scene object stays untouched
         private static void PrepareForEvent(GameObject root)
         {
+            // leftover missing scripts make SaveAsPrefabAsset refuse the whole booth,
+            // and they carry nothing the event world could run anyway
+            foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+            {
+                GameObjectUtility.RemoveMonoBehavioursWithMissingScript(child.gameObject);
+            }
+
             foreach (Light light in root.GetComponentsInChildren<Light>(true))
             {
                 if (light.type == LightType.Directional)
