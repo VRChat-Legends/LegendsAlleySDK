@@ -356,12 +356,29 @@ namespace LegendsNexus.Alley.Editor
             for (int i = 0; i < members.Count; i++) members[i].CellRect = rects[i];
 
             atlas.name = atlasName;
-            atlas.wrapMode = TextureWrapMode.Clamp;
-            atlas.filterMode = FilterMode.Bilinear;
-            AssetDatabase.CreateAsset(atlas, folder + "/" + atlasName + ".asset");
+            // png through the import pipeline instead of a raw texture asset, raw
+            // assets never get compressed and ship as full fat rgba32
+            string atlasPath = folder + "/" + atlasName + ".png";
+            System.IO.File.WriteAllBytes(System.IO.Path.GetFullPath(atlasPath), atlas.EncodeToPNG());
+            Object.DestroyImmediate(atlas);
+            AssetDatabase.ImportAsset(atlasPath, ImportAssetOptions.ForceUpdate);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(atlasPath);
+            importer.textureType = TextureImporterType.Default;
+            importer.alphaSource = TextureImporterAlphaSource.FromInput;
+            importer.alphaIsTransparency = true;
+            importer.mipmapEnabled = true;
+            importer.wrapMode = TextureWrapMode.Clamp;
+            importer.filterMode = FilterMode.Bilinear;
+            importer.maxTextureSize = settings.AtlasSize;
+            importer.textureCompression = TextureImporterCompression.Compressed;
+            importer.crunchedCompression = true;
+            importer.compressionQuality = 75;
+            importer.isReadable = false;
+            importer.SaveAndReimport();
+            Texture2D importedAtlas = AssetDatabase.LoadAssetAtPath<Texture2D>(atlasPath);
 
             var material = new Material(Shader.Find("Standard")) { name = atlasName + "_Mat" };
-            material.mainTexture = atlas;
+            material.mainTexture = importedAtlas;
             if (anyCutout)
             {
                 // standard shader cutout mode, alpha from the atlas keeps holes as holes
