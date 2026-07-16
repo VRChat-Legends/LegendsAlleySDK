@@ -9,8 +9,10 @@ Build, check, and upload your community booth for Legends Alley, straight from U
 [![Release](https://img.shields.io/github/v/release/VRChat-Legends/LegendsAlleySDK?label=release&color=FF007A)](https://github.com/VRChat-Legends/LegendsAlleySDK/releases)
 [![Unity](https://img.shields.io/badge/Unity-2022.3-1FD1ED?logo=unity)](https://unity.com/releases/editor/whats-new/2022.3.22)
 [![VRChat Worlds SDK](https://img.shields.io/badge/VRChat%20Worlds%20SDK-3.7%2B-6B46C1)](https://creators.vrchat.com/worlds/)
-[![VPM Listing](https://img.shields.io/badge/VPM-vrchatlegends.com-FFD700)](https://vrchatlegends.com/vpm/index.json)
+[![VPM Listing](https://img.shields.io/badge/VPM-vrchatlegends.com-FFD700)](https://vrchatlegends.com/vpm)
 [![Discord](https://img.shields.io/badge/Discord-VRChat%20Legends-5865F2?logo=discord&logoColor=white)](https://discord.gg/6xPkZ7Dxp9)
+
+[![Add to the Creator Companion](https://img.shields.io/badge/Add%20to%20the%20Creator%20Companion-FF007A?style=for-the-badge&logo=vrchat&logoColor=white)](https://vrchatlegends.com/vpm)
 
 </div>
 
@@ -39,15 +41,18 @@ Don't have an approved community yet? [Apply here](https://vrchatlegends.com/all
 ## Installing with the Creator Companion
 
 1. Install the [VRChat Creator Companion](https://vcc.docs.vrchat.com/) if you don't have it yet.
-2. In the Creator Companion, open **Settings**, then **Packages**, then **Add Repository**.
-3. Paste this listing URL and confirm:
+2. Press the button below and let the Creator Companion take it from there:
+
+   [![Add to the Creator Companion](https://img.shields.io/badge/Add%20to%20the%20Creator%20Companion-FF007A?style=for-the-badge&logo=vrchat&logoColor=white)](https://vrchatlegends.com/vpm)
+
+   Prefer doing it by hand? In the Creator Companion open **Settings**, then **Packages**, then **Add Repository**, and paste:
 
    ```
    https://vrchatlegends.com/vpm/index.json
    ```
 
-4. Open (or create) your **Worlds** project, click **Manage Project**, find **Legends Alley SDK** in the package list, and add it.
-5. In Unity, open the window from the menu bar: **Legends Alley > SDK Window**.
+3. Open (or create) your **Worlds** project, click **Manage Project**, find **Legends Alley SDK** in the package list, and add it.
+4. In Unity, open the window from the menu bar: **Legends Alley > SDK Window**.
 
 That's it. Updates show up in the Creator Companion like any other VRChat package.
 
