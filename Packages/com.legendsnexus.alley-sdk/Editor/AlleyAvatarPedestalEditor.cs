@@ -57,6 +57,14 @@ namespace LegendsNexus.Alley.Editor
                 return;
             }
 
+            if (Helper.GetComponent<AlleyPedestalInteract>() == null)
+            {
+                AlleyInspectorKit.SetStatus(status,
+                    "No Alley Pedestal Interact on this object, so nothing happens when people press it. Use the bundled prefab or add the component and point it at the pedestal.",
+                    "warn");
+                return;
+            }
+
             string id = CurrentId;
             if (string.IsNullOrEmpty(id))
             {

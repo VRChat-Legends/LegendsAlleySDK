@@ -47,6 +47,13 @@ namespace LegendsNexus.Alley.Editor
                 var pedestal = root.AddComponent<VRCAvatarPedestal>();
                 pedestal.ChangeAvatarsOnUse = true;
 
+                // pressing is udon's job, the pedestal component alone is inert
+                var interact = (AlleyPedestalInteract)UdonSharpComponentExtensions.AddUdonSharpComponent(root, typeof(AlleyPedestalInteract));
+                UdonBehaviour interactBacking = UdonSharpEditorUtility.GetBackingUdonBehaviour(interact);
+                interactBacking.interactText = "Use Avatar";
+                interactBacking.proximity = 3f;
+                interactBacking.SyncMethod = VRC.SDKBase.Networking.SyncType.None;
+
                 float anchorScale = PictureSize / PlateSize;
                 var anchor = new GameObject("Avatar Display").transform;
                 anchor.SetParent(root.transform, false);
@@ -100,15 +107,22 @@ namespace LegendsNexus.Alley.Editor
                 AssetDatabase.CreateAsset(assembly, assemblyPath);
             }
 
-            string path = ProgramFolder + "/AlleyGroupButton.asset";
+            EnsureProgram("AlleyGroupButton");
+            EnsureProgram("AlleyPedestalInteract");
+        }
+
+        private static void EnsureProgram(string className)
+        {
+            string path = ProgramFolder + "/" + className + ".asset";
             if (AssetDatabase.LoadAssetAtPath<UdonSharpProgramAsset>(path) != null) return;
 
-            var script = AssetDatabase.LoadAssetAtPath<MonoScript>(AlleyConfig.PackageRoot + "/Runtime/AlleyGroupButton.cs");
+            var script = AssetDatabase.LoadAssetAtPath<MonoScript>(AlleyConfig.PackageRoot + "/Runtime/" + className + ".cs");
             var program = ScriptableObject.CreateInstance<UdonSharpProgramAsset>();
             program.sourceCsScript = script;
             AssetDatabase.CreateAsset(program, path);
             AssetDatabase.SaveAssets();
-            UdonSharpProgramAsset.CompileAllCsPrograms(true, true);
+            // blocking compile, the prefab build right after needs it done
+            UdonSharp.Compiler.UdonSharpCompilerV1.CompileSync(new UdonSharp.Compiler.UdonSharpCompileOptions());
         }
 
         // simple antialiased white circle, tinted by the ui images that use it
