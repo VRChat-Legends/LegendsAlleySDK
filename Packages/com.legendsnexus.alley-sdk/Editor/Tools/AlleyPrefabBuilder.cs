@@ -22,11 +22,54 @@ namespace LegendsNexus.Alley.Editor
         private static readonly Color32 Purple = new Color32(107, 70, 193, 255);
         private static readonly Color32 CardDark = new Color32(16, 18, 22, 250);
 
-        // measured ingame: the client draws the avatar picture as a fixed rounded
-        // square about 1.68m wide centered 1.35m above the placement transform,
-        // and the pedestals scale field does not change it
+        // measured ingame: the client draws the avatar picture as a rounded
+        // square about 1.68m wide centered 1.35m above the placement transform.
+        // the pedestals scale field does nothing but the placement transforms
+        // scale applies, so the anchor gets shrunk until the picture is the
+        // same size as the group button
         private const float PlateSize = 1.68f;
         private const float PlateCenterOffset = 1.35f;
+        private const float ButtonSize = 0.42f;
+
+        // rounded square outline that hugs the avatar picture the client draws.
+        // root pivot sits at the center of the picture, the placement anchor
+        // hangs below it scaled down so the picture lands inside the frame
+        private static void BuildAvatarPedestal(Sprite squareRing)
+        {
+            var root = new GameObject("Alley Avatar Pedestal");
+            try
+            {
+                var helper = root.AddComponent<AlleyAvatarPedestal>();
+
+                var collider = root.AddComponent<BoxCollider>();
+                collider.isTrigger = true;
+                collider.size = new Vector3(ButtonSize, ButtonSize, 0.08f);
+
+                var pedestal = root.AddComponent<VRCAvatarPedestal>();
+                pedestal.ChangeAvatarsOnUse = true;
+
+                // picture slightly inset so the outline frames it like the
+                // group buttons ring frames its disc
+                float plate = ButtonSize - 0.06f;
+                float anchorScale = plate / PlateSize;
+                var anchor = new GameObject("Avatar Display").transform;
+                anchor.SetParent(root.transform, false);
+                anchor.localPosition = new Vector3(0f, -PlateCenterOffset * anchorScale, 0.01f);
+                anchor.localScale = Vector3.one * anchorScale;
+                pedestal.Placement = anchor;
+
+                Transform face = MakeWorldCanvas(root.transform, "Frame", new Vector2(512f, 512f), ButtonSize / 512f, Vector3.zero);
+                AddImage(face, "Outline", squareRing, Purple, new Vector2(512f, 512f));
+
+                helper.displayAnchor = anchor;
+
+                SavePrefab(root, "Alley Avatar Pedestal");
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
 
         [MenuItem("Tools/Legends Alley/Dev/Rebuild Bundled Prefabs")]
         public static void RebuildAll()
@@ -177,42 +220,6 @@ namespace LegendsNexus.Alley.Editor
                 AddLabel(face, "Label", "VISIT GROUP", new Vector2(320f, 250f), 40f, 96f, Color.white);
 
                 SavePrefab(root, "Alley Group Button");
-            }
-            finally
-            {
-                Object.DestroyImmediate(root);
-            }
-        }
-
-        // rounded square outline that hugs the avatar picture the client draws.
-        // root pivot sits at the center of the picture, the placement anchor
-        // hangs below it so the plate lands exactly inside the frame
-        private static void BuildAvatarPedestal(Sprite squareRing)
-        {
-            var root = new GameObject("Alley Avatar Pedestal");
-            try
-            {
-                var helper = root.AddComponent<AlleyAvatarPedestal>();
-
-                var collider = root.AddComponent<BoxCollider>();
-                collider.isTrigger = true;
-                collider.size = new Vector3(PlateSize, PlateSize, 0.1f);
-
-                var pedestal = root.AddComponent<VRCAvatarPedestal>();
-                pedestal.ChangeAvatarsOnUse = true;
-
-                var anchor = new GameObject("Avatar Display").transform;
-                anchor.SetParent(root.transform, false);
-                anchor.localPosition = new Vector3(0f, -PlateCenterOffset, 0.01f);
-                pedestal.Placement = anchor;
-
-                float frameSize = PlateSize + 0.14f;
-                Transform face = MakeWorldCanvas(root.transform, "Frame", new Vector2(512f, 512f), frameSize / 512f, Vector3.zero);
-                AddImage(face, "Outline", squareRing, Purple, new Vector2(512f, 512f));
-
-                helper.displayAnchor = anchor;
-
-                SavePrefab(root, "Alley Avatar Pedestal");
             }
             finally
             {
