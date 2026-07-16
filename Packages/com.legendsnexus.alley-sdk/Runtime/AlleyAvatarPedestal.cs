@@ -16,14 +16,34 @@ namespace LegendsNexus.Alley
         public Transform displayAnchor;
 
 #if UNITY_EDITOR
-        // the client draws the avatar picture as a person sized rounded square
-        // centered about 1.35m above the placement, show that in the editor
+        // the avatar picture only renders ingame, so paint a filled stand in
+        // where it will be. faint always, loud with a cross when selected
+        private void OnDrawGizmos()
+        {
+            if (displayAnchor == null) return;
+            Gizmos.matrix = displayAnchor.localToWorldMatrix;
+            Vector3 center = new Vector3(0f, 1.35f, 0f);
+            Vector3 size = new Vector3(1.68f, 1.68f, 0.02f);
+            Gizmos.color = new Color(0.61f, 0.48f, 0.83f, 0.22f);
+            Gizmos.DrawCube(center, size);
+            Gizmos.color = new Color(0.61f, 0.48f, 0.83f, 1f);
+            Gizmos.DrawWireCube(center, size);
+        }
+
         private void OnDrawGizmosSelected()
         {
             if (displayAnchor == null) return;
-            Gizmos.color = new Color(0.42f, 0.27f, 0.76f, 0.9f);
             Gizmos.matrix = displayAnchor.localToWorldMatrix;
-            Gizmos.DrawWireCube(new Vector3(0f, 1.35f, 0f), new Vector3(1.68f, 1.68f, 0.02f));
+            Vector3 center = new Vector3(0f, 1.35f, 0f);
+            const float e = 0.84f;
+            Gizmos.color = new Color(1f, 0f, 0.48f, 0.9f);
+            Gizmos.DrawLine(center + new Vector3(-e, -e, 0f), center + new Vector3(e, e, 0f));
+            Gizmos.DrawLine(center + new Vector3(-e, e, 0f), center + new Vector3(e, -e, 0f));
+
+            var style = new GUIStyle();
+            style.normal.textColor = new Color(0.75f, 0.62f, 0.95f);
+            style.fontStyle = FontStyle.Bold;
+            UnityEditor.Handles.Label(displayAnchor.TransformPoint(center + new Vector3(0f, e + 0.12f, 0f)), "AVATAR PICTURE", style);
         }
 #endif
     }
