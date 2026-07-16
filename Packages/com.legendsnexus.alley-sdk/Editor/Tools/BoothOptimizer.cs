@@ -54,10 +54,12 @@ namespace LegendsNexus.Alley.Editor
             var order = new List<Material>();
             var byMaterial = new Dictionary<Material, MaterialEntry>();
             if (root == null) return new List<MaterialEntry>();
+            HashSet<Transform> protectedRoots = ProtectedRoots(root);
 
             foreach (MeshRenderer renderer in root.GetComponentsInChildren<MeshRenderer>())
             {
                 if (!renderer.enabled) continue;
+                if (IsProtected(renderer.transform, root.transform, protectedRoots)) continue;
                 var filter = renderer.GetComponent<MeshFilter>();
                 if (filter == null || filter.sharedMesh == null) continue;
                 foreach (Material material in renderer.sharedMaterials)
@@ -116,9 +118,13 @@ namespace LegendsNexus.Alley.Editor
                 ProBuilderBaker.MakeMeshesUnique(copy);
                 ProBuilderBaker.RebuildMeshes(copy);
 
+                // interactive bits ride along untouched: baking a video screen or a
+                // pickup into the static mesh breaks it
+                HashSet<Transform> protectedRoots = ProtectedRoots(copy);
+
                 EditorUtility.DisplayProgressBar("Booth Optimizer", "Reading meshes...", 0.15f);
                 var combinedParts = new List<(MeshFilter filter, MeshRenderer renderer)>();
-                List<Piece> pieces = GatherPieces(copy, combinedParts);
+                List<Piece> pieces = GatherPieces(copy, protectedRoots, combinedParts);
                 if (pieces.Count == 0)
                 {
                     Object.DestroyImmediate(copy);
@@ -199,7 +205,7 @@ namespace LegendsNexus.Alley.Editor
                 holder.AddComponent<MeshFilter>().sharedMesh = combined;
                 holder.AddComponent<MeshRenderer>().sharedMaterials = slotMaterials.ToArray();
 
-                PruneEmptyChildren(copy.transform);
+                PruneEmptyChildren(copy.transform, protectedRoots);
 
                 AssetDatabase.SaveAssets();
 
@@ -228,6 +234,37 @@ namespace LegendsNexus.Alley.Editor
             }
         }
 
+        // subtrees that must come out of the optimizer exactly as they went in:
+        // the bundled kit prefabs (group button, avatar pedestal, video player)
+        // plus anything a creator wired up with udon or made grabbable. the booth
+        // root itself never counts or a root level script would protect everything
+        private static HashSet<Transform> ProtectedRoots(GameObject root)
+        {
+            var protectedRoots = new HashSet<Transform>();
+            foreach (VRC.Udon.UdonBehaviour udon in root.GetComponentsInChildren<VRC.Udon.UdonBehaviour>(true))
+            {
+                if (udon.transform != root.transform) protectedRoots.Add(udon.transform);
+            }
+            foreach (VRC.SDK3.Components.VRCPickup pickup in root.GetComponentsInChildren<VRC.SDK3.Components.VRCPickup>(true))
+            {
+                if (pickup.transform != root.transform) protectedRoots.Add(pickup.transform);
+            }
+            foreach (VRC.SDK3.Components.VRCAvatarPedestal pedestal in root.GetComponentsInChildren<VRC.SDK3.Components.VRCAvatarPedestal>(true))
+            {
+                if (pedestal.transform != root.transform) protectedRoots.Add(pedestal.transform);
+            }
+            return protectedRoots;
+        }
+
+        private static bool IsProtected(Transform transform, Transform root, HashSet<Transform> protectedRoots)
+        {
+            for (Transform current = transform; current != null && current != root; current = current.parent)
+            {
+                if (protectedRoots.Contains(current)) return true;
+            }
+            return false;
+        }
+
         private static void CountStats(GameObject root, out int renderers, out int materials)
         {
             renderers = 0;
@@ -244,13 +281,14 @@ namespace LegendsNexus.Alley.Editor
             materials = distinct.Count;
         }
 
-        private static List<Piece> GatherPieces(GameObject root, List<(MeshFilter, MeshRenderer)> parts)
+        private static List<Piece> GatherPieces(GameObject root, HashSet<Transform> protectedRoots, List<(MeshFilter, MeshRenderer)> parts)
         {
             var pieces = new List<Piece>();
             foreach (MeshFilter filter in root.GetComponentsInChildren<MeshFilter>())
             {
                 var renderer = filter.GetComponent<MeshRenderer>();
                 if (renderer == null || !renderer.enabled || filter.sharedMesh == null) continue;
+                if (IsProtected(filter.transform, root.transform, protectedRoots)) continue;
                 parts.Add((filter, renderer));
 
                 Mesh mesh = filter.sharedMesh;
@@ -546,11 +584,14 @@ namespace LegendsNexus.Alley.Editor
 
         // gameobjects that only carried visuals end up as empty husks, clear them
         // out but keep anything with colliders, scripts, lights or children
-        private static void PruneEmptyChildren(Transform root)
+        private static void PruneEmptyChildren(Transform root, HashSet<Transform> protectedRoots)
         {
+            // protected subtrees keep their empty helpers, the pedestals bare
+            // placement anchor for example
+            if (protectedRoots.Contains(root)) return;
             for (int i = root.childCount - 1; i >= 0; i--)
             {
-                PruneEmptyChildren(root.GetChild(i));
+                PruneEmptyChildren(root.GetChild(i), protectedRoots);
             }
             if (root.parent == null) return;
             if (root.childCount == 0 && root.GetComponents<Component>().Length == 1)
