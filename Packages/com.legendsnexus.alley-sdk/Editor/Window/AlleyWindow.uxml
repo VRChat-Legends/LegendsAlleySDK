@@ -122,6 +122,9 @@
                             </ui:VisualElement>
                             <ui:Button name="randomize-button" text="RANDOMIZE" class="alley-button-ghost alley-randomize" />
                         </ui:VisualElement>
+                        <ui:VisualElement class="alley-shadow alley-shadow-teal">
+                            <ui:Button name="impostors-button" text="MAKE IMPOSTORS" class="alley-button-secondary" />
+                        </ui:VisualElement>
                         <ui:ScrollView name="staff-log" class="alley-staff-log" />
                     </ui:VisualElement>
                 </ui:VisualElement>

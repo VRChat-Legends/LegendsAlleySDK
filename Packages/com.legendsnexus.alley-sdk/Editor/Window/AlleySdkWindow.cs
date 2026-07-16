@@ -56,6 +56,7 @@ namespace LegendsNexus.Alley.Editor
         private CancellationTokenSource _loginCancel;
         private bool _busy;
         private Button _staffSyncButton;
+        private Button _impostorsButton;
         private Label _staffPlotsSummary;
         private ScrollView _staffLog;
         private TextField _communityDescription;
@@ -118,6 +119,7 @@ namespace LegendsNexus.Alley.Editor
             _blockers = rootVisualElement.Q("blockers");
             _uploadProgress = rootVisualElement.Q<ProgressBar>("upload-progress");
             _staffSyncButton = rootVisualElement.Q<Button>("staff-sync-button");
+            _impostorsButton = rootVisualElement.Q<Button>("impostors-button");
             _staffPlotsSummary = rootVisualElement.Q<Label>("staff-plots-summary");
             _staffLog = rootVisualElement.Q<ScrollView>("staff-log");
             _checkWrap = rootVisualElement.Q("check-wrap");
@@ -164,6 +166,7 @@ namespace LegendsNexus.Alley.Editor
             _loginCancelButton.clicked += () => _loginCancel?.Cancel();
             _signOutButton.clicked += StartSignOut;
             _refreshButton.clicked += StartRefresh;
+            _impostorsButton.clicked += StartMakeImpostors;
             _checkButton.clicked += RunCheck;
             _uploadButton.clicked += StartUpload;
             _staffSyncButton.clicked += StartStaffSync;
@@ -763,6 +766,41 @@ namespace LegendsNexus.Alley.Editor
             if (BoothImporter.IsRunning || AlleySession.SelectedEvent == null) return;
             _staffLog.Clear();
             await RunStaffOp(() => BoothImporter.Sync(AlleySession.SelectedEvent));
+        }
+
+        // bakes the four view impostor quads for every placed booth and wires up lod groups
+        private void StartMakeImpostors()
+        {
+            if (_busy || BoothImporter.IsRunning) return;
+            _busy = true;
+            _impostorsButton.SetEnabled(false);
+            SetTicker(true);
+            SetStatus("Baking booth impostors...");
+            try
+            {
+                BoothImpostorBaker.Summary summary = BoothImpostorBaker.BakeAllPlacedBooths(OnImporterLog);
+                if (summary.Baked == 0 && summary.Skipped == 0)
+                {
+                    OnImporterLog("No placed booths found. Sync booths onto plots first.");
+                    SetStatus("Nothing to bake.");
+                }
+                else
+                {
+                    OnImporterLog($"Impostors done: {summary.Baked} baked, {summary.Skipped} skipped. Re-run after syncing new booth versions.");
+                    SetStatus($"Impostors baked for {summary.Baked} booth{(summary.Baked == 1 ? "" : "s")}.");
+                }
+            }
+            catch (Exception e)
+            {
+                SetStatus("Impostor bake failed: " + e.Message);
+                Debug.LogException(e);
+            }
+            finally
+            {
+                _busy = false;
+                SetTicker(false);
+                _impostorsButton.SetEnabled(true);
+            }
         }
 
         private async void StartManualPlace()

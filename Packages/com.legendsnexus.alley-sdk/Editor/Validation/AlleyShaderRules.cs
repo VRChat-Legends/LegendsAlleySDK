@@ -5,7 +5,7 @@ namespace LegendsNexus.Alley.Editor
     // event shader whitelist, the backend re-checks the same list server side
     internal static class AlleyShaderRules
     {
-        public const string Description = "Standard, z3y, Filamented, unlit, TMP, UI, or particle shaders";
+        public const string Description = "Standard, z3y, Filamented, unlit, legacy, TMP, UI, or particle shaders";
 
         private static readonly HashSet<string> AllowedExact = new HashSet<string>
         {
@@ -21,7 +21,8 @@ namespace LegendsNexus.Alley.Editor
             "TextMeshPro/",
             "TMP/",
             "Particles/",
-            "Legacy Shaders/Particles/",
+            "Legacy Shaders/",
+            "Mobile/",
             "VRChat/Mobile/",
             "z3y/",
             "Filamented/",
