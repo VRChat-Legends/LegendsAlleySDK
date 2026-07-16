@@ -589,7 +589,32 @@ namespace LegendsNexus.Alley.Editor
         {
             IsRunning = false;
             ImportQueue.Clear();
+            RepairNetworkIds();
             Log($"Sync finished. Placed {queue.importedCount}, updated {queue.updatedCount}, skipped {queue.skippedCount} already up to date.");
+        }
+
+        // booth versions change their udon layout between syncs and the scene
+        // descriptor remembers the old component list per object, which then
+        // fails the world build with IncompatibleTypes. refresh stale entries
+        // and drop ones whose objects are gone
+        private static void RepairNetworkIds()
+        {
+            var descriptor = UnityEngine.Object.FindObjectOfType<VRC.SDKBase.VRC_SceneDescriptor>();
+            if (descriptor == null || descriptor.NetworkIDCollection == null) return;
+
+            int dropped = descriptor.NetworkIDCollection.RemoveAll(pair => pair.gameObject == null);
+            int refreshed = 0;
+            foreach (var pair in descriptor.NetworkIDCollection)
+            {
+                var current = VRC.SDKBase.Network.NetworkIDAssignment.GetSerializedTypes(pair.gameObject);
+                if (pair.SerializedTypeNames != null && current.SequenceEqual(pair.SerializedTypeNames)) continue;
+                pair.SerializedTypeNames = current;
+                refreshed++;
+            }
+
+            if (dropped == 0 && refreshed == 0) return;
+            EditorSceneManager.MarkSceneDirty(descriptor.gameObject.scene);
+            Log($"Tidied the scene's network IDs: {refreshed} refreshed, {dropped} dead entrie(s) dropped.");
         }
 
         /* ─── scene helpers ─── */
