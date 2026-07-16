@@ -937,7 +937,15 @@ namespace LegendsNexus.Alley.Editor
         {
             _booths = FindBoothsInScene();
             var names = new List<string>();
-            foreach (LegendsBooth booth in _booths) names.Add(booth.BoothName);
+            // community name first so its obvious whose booth is selected when a
+            // project has several builds lying around
+            string communityName = AlleySession.Community?.name;
+            foreach (LegendsBooth booth in _booths)
+            {
+                names.Add(string.IsNullOrEmpty(communityName)
+                    ? booth.BoothName
+                    : $"{communityName} ({booth.gameObject.name})");
+            }
 
             bool any = names.Count > 0;
             _noBoothMessage.style.display = any ? DisplayStyle.None : DisplayStyle.Flex;
