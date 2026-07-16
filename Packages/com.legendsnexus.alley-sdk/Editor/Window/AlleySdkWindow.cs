@@ -928,7 +928,10 @@ namespace LegendsNexus.Alley.Editor
             string deadline = "";
             if (DateTime.TryParse(selected.uploadDeadline, out DateTime parsed))
             {
-                deadline = $"DUE {parsed.ToLocalTime():MMM d, HH:mm}".ToUpperInvariant();
+                // local time in whatever clock format the machine is set to,
+                // 12h people get am/pm and 24h people get their 24h
+                DateTime local = parsed.ToLocalTime();
+                deadline = $"DUE {local:MMM d}, {local.ToString("t", System.Globalization.CultureInfo.CurrentCulture)}".ToUpperInvariant();
             }
             _eventInfo.text = deadline;
         }
