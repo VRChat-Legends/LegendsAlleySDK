@@ -25,16 +25,16 @@ namespace LegendsNexus.Alley.Editor
         // measured ingame: the client draws the avatar picture as a rounded
         // square about 1.68m wide centered 1.35m above the placement transform.
         // the pedestals scale field does nothing but the placement transforms
-        // scale applies, so the anchor gets shrunk until the picture is the
-        // same size as the group button
+        // scale applies, so the anchor gets shrunk until the picture is button ish
         private const float PlateSize = 1.68f;
         private const float PlateCenterOffset = 1.35f;
-        private const float ButtonSize = 0.42f;
+        private const float PictureSize = 0.5f;
 
-        // rounded square outline that hugs the avatar picture the client draws.
-        // root pivot sits at the center of the picture, the placement anchor
-        // hangs below it scaled down so the picture lands inside the frame
-        private static void BuildAvatarPedestal(Sprite squareRing)
+        // just the avatar picture the client draws, no frame around it. root
+        // pivot sits at the center of the picture with the placement anchor
+        // hanging below. the collider is solid on purpose, vrchats own sample
+        // pedestal uses a solid one and the interact needs it to register
+        private static void BuildAvatarPedestal()
         {
             var root = new GameObject("Alley Avatar Pedestal");
             try
@@ -42,24 +42,17 @@ namespace LegendsNexus.Alley.Editor
                 var helper = root.AddComponent<AlleyAvatarPedestal>();
 
                 var collider = root.AddComponent<BoxCollider>();
-                collider.isTrigger = true;
-                collider.size = new Vector3(ButtonSize, ButtonSize, 0.08f);
+                collider.size = new Vector3(PictureSize + 0.05f, PictureSize + 0.05f, 0.12f);
 
                 var pedestal = root.AddComponent<VRCAvatarPedestal>();
                 pedestal.ChangeAvatarsOnUse = true;
 
-                // picture slightly inset so the outline frames it like the
-                // group buttons ring frames its disc
-                float plate = ButtonSize - 0.06f;
-                float anchorScale = plate / PlateSize;
+                float anchorScale = PictureSize / PlateSize;
                 var anchor = new GameObject("Avatar Display").transform;
                 anchor.SetParent(root.transform, false);
                 anchor.localPosition = new Vector3(0f, -PlateCenterOffset * anchorScale, 0.01f);
                 anchor.localScale = Vector3.one * anchorScale;
                 pedestal.Placement = anchor;
-
-                Transform face = MakeWorldCanvas(root.transform, "Frame", new Vector2(512f, 512f), ButtonSize / 512f, Vector3.zero);
-                AddImage(face, "Outline", squareRing, Purple, new Vector2(512f, 512f));
 
                 helper.displayAnchor = anchor;
 
@@ -78,9 +71,8 @@ namespace LegendsNexus.Alley.Editor
             EnsureProgramAsset();
             Sprite disc = EnsureCircleSprite("AlleyDisc", false);
             Sprite ring = EnsureCircleSprite("AlleyRing", true);
-            Sprite squareRing = EnsureSquareRingSprite("AlleySquareRing");
             BuildGroupButton(disc, ring);
-            BuildAvatarPedestal(squareRing);
+            BuildAvatarPedestal();
             AssetDatabase.SaveAssets();
             Debug.Log("[LegendsAlley] Bundled prefabs rebuilt.");
         }
@@ -136,50 +128,6 @@ namespace LegendsNexus.Alley.Editor
                     float d = Vector2.Distance(new Vector2(x, y), center);
                     float alpha = Mathf.Clamp01(124f - d);
                     if (ring) alpha *= Mathf.Clamp01(d - 106f);
-                    pixels[y * size + x] = new Color32(255, 255, 255, (byte)(alpha * 255f));
-                }
-            }
-            texture.SetPixels32(pixels);
-            File.WriteAllBytes(path, texture.EncodeToPNG());
-            Object.DestroyImmediate(texture);
-            AssetDatabase.ImportAsset(path);
-
-            var importer = (TextureImporter)AssetImporter.GetAtPath(path);
-            importer.textureType = TextureImporterType.Sprite;
-            importer.spriteImportMode = SpriteImportMode.Single;
-            importer.mipmapEnabled = true;
-            importer.wrapMode = TextureWrapMode.Clamp;
-            importer.filterMode = FilterMode.Trilinear;
-            importer.textureCompression = TextureImporterCompression.Compressed;
-            importer.SaveAndReimport();
-            return AssetDatabase.LoadAssetAtPath<Sprite>(path);
-        }
-
-        // rounded square outline matching the shape of the avatar picture the
-        // client draws, same stroke weight style as the round ring
-        private static Sprite EnsureSquareRingSprite(string name)
-        {
-            string path = TextureFolder + "/" + name + ".png";
-            if (AssetDatabase.LoadAssetAtPath<Sprite>(path) != null) return AssetDatabase.LoadAssetAtPath<Sprite>(path);
-
-            const int size = 256;
-            const float half = 124f;
-            const float corner = 38f;
-            const float halfThick = 7f;
-            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            var pixels = new Color32[size * size];
-            float c = size * 0.5f - 0.5f;
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    // signed distance to a rounded rect edge, band of pixels around it
-                    float dx = Mathf.Abs(x - c) - (half - corner);
-                    float dy = Mathf.Abs(y - c) - (half - corner);
-                    float outside = Mathf.Sqrt(Mathf.Max(dx, 0f) * Mathf.Max(dx, 0f) + Mathf.Max(dy, 0f) * Mathf.Max(dy, 0f));
-                    float inside = Mathf.Min(Mathf.Max(dx, dy), 0f);
-                    float d = outside + inside - corner;
-                    float alpha = Mathf.Clamp01(halfThick - Mathf.Abs(d) + 0.5f);
                     pixels[y * size + x] = new Color32(255, 255, 255, (byte)(alpha * 255f));
                 }
             }
