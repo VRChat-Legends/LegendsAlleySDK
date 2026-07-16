@@ -99,7 +99,7 @@ The player is range based. It starts on its own when someone walks within the pl
 - The TOOLS tab has the **booth optimizer**. Point it at your booth and it combines your meshes into one and packs your textures into shared atlases, usually the single biggest win for draw calls and material counts. It works on a copy and leaves your original disabled next to it, so you can always go back.
 - Interactive things (the booth kit prefabs, pickups, anything with Udon on it) pass through the optimizer untouched, so it's safe to run on a finished booth.
 - ProBuilder geometry is welcome. It gets combined and atlased automatically at upload time.
-- Shaders are limited to an event whitelist: Standard, z3y, Filamented, Poiyomi (not Pro), lilToon, unlit, legacy, TMP, UI, and particle shaders. The checker names any material that's off the list.
+- Shaders are limited to an event whitelist: Standard, z3y, Filamented, lilToon, unlit, legacy, TMP, UI, and particle shaders. The checker names any material that's off the list.
 
 ## FAQ
 
