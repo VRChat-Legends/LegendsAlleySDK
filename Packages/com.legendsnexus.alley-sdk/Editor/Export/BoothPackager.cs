@@ -135,6 +135,15 @@ namespace LegendsNexus.Alley.Editor
                     source.maxDistance = maxAudioRange;
                 }
             }
+            // vrchats own falloff comes from this component when present, clamping
+            // just the audio source would leave a 40m+ Far wide open
+            foreach (VRC.SDKBase.VRC_SpatialAudioSource spatial in root.GetComponentsInChildren<VRC.SDKBase.VRC_SpatialAudioSource>(true))
+            {
+                if (maxAudioRange > 0f && spatial.Far > maxAudioRange)
+                {
+                    spatial.Far = maxAudioRange;
+                }
+            }
         }
 
         // camera pose relative to the booth, so the same framing works on the

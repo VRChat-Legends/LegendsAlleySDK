@@ -57,9 +57,16 @@ namespace LegendsNexus.Alley.Editor
             stats.portals = portals.Length;
             stats.textComponents = textObjects.Count;
             stats.audioSources = audioSources.Length;
+            VRC.SDKBase.VRC_SpatialAudioSource[] spatialAudio = root.GetComponentsInChildren<VRC.SDKBase.VRC_SpatialAudioSource>(true);
             foreach (AudioSource source in audioSources)
             {
                 stats.audioRangeMeters = Mathf.Max(stats.audioRangeMeters, source.maxDistance);
+            }
+            // vrchat takes its falloff from this component when present, so a small
+            // maxDistance can still hide a huge Far
+            foreach (VRC.SDKBase.VRC_SpatialAudioSource spatial in spatialAudio)
+            {
+                stats.audioRangeMeters = Mathf.Max(stats.audioRangeMeters, spatial.Far);
             }
             stats.nonBoxColliders = oddColliders.Count;
 
@@ -94,6 +101,10 @@ namespace LegendsNexus.Alley.Editor
                 foreach (AudioSource source in audioSources)
                 {
                     if (source.maxDistance > limits.maxAudioRangeMeters) loud.Add(source);
+                }
+                foreach (VRC.SDKBase.VRC_SpatialAudioSource spatial in spatialAudio)
+                {
+                    if (spatial.Far > limits.maxAudioRangeMeters) loud.Add(spatial);
                 }
                 offenders["Audio range (m)"] = DistinctGameObjects(loud);
             }
