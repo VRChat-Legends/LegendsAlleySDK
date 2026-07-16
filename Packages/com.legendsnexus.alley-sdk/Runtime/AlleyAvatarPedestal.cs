@@ -16,13 +16,14 @@ namespace LegendsNexus.Alley
         public Transform displayAnchor;
 
 #if UNITY_EDITOR
-        // the avatar picture only renders ingame, show creators where it will be
+        // the client draws the avatar picture as a person sized rounded square
+        // centered about 1.35m above the placement, show that in the editor
         private void OnDrawGizmosSelected()
         {
             if (displayAnchor == null) return;
             Gizmos.color = new Color(0.42f, 0.27f, 0.76f, 0.9f);
             Gizmos.matrix = displayAnchor.localToWorldMatrix;
-            Gizmos.DrawWireCube(Vector3.zero, new Vector3(0.35f, 0.35f, 0.02f));
+            Gizmos.DrawWireCube(new Vector3(0f, 1.35f, 0f), new Vector3(1.68f, 1.68f, 0.02f));
         }
 #endif
     }

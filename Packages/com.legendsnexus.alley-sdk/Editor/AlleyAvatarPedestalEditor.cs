@@ -73,7 +73,7 @@ namespace LegendsNexus.Alley.Editor
             else
             {
                 AlleyInspectorKit.SetStatus(status,
-                    "In game the disc shows the avatar's picture and pressing it switches people into the avatar. Keep it public.", null);
+                    "In game the avatar's picture fills the frame and pressing it switches people into the avatar. Keep it public.", null);
             }
         }
 

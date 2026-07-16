@@ -19,7 +19,8 @@ namespace LegendsNexus.Alley.Editor
         [MenuItem("GameObject/Legends Alley/Avatar Pedestal", false, 11)]
         private static void SpawnAvatarPedestal(MenuCommand command)
         {
-            Spawn(AvatarPedestal, command, new Vector3(0f, 1.2f, 0f));
+            // pivot is the center of the avatar picture, this floats it person high
+            Spawn(AvatarPedestal, command, new Vector3(0f, 1.35f, 0f));
         }
 
         private static void Spawn(string path, MenuCommand command, Vector3 offset)

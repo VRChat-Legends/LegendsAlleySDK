@@ -22,6 +22,12 @@ namespace LegendsNexus.Alley.Editor
         private static readonly Color32 Purple = new Color32(107, 70, 193, 255);
         private static readonly Color32 CardDark = new Color32(16, 18, 22, 250);
 
+        // measured ingame: the client draws the avatar picture as a fixed rounded
+        // square about 1.68m wide centered 1.35m above the placement transform,
+        // and the pedestals scale field does not change it
+        private const float PlateSize = 1.68f;
+        private const float PlateCenterOffset = 1.35f;
+
         [MenuItem("Tools/Legends Alley/Dev/Rebuild Bundled Prefabs")]
         public static void RebuildAll()
         {
@@ -29,8 +35,9 @@ namespace LegendsNexus.Alley.Editor
             EnsureProgramAsset();
             Sprite disc = EnsureCircleSprite("AlleyDisc", false);
             Sprite ring = EnsureCircleSprite("AlleyRing", true);
+            Sprite squareRing = EnsureSquareRingSprite("AlleySquareRing");
             BuildGroupButton(disc, ring);
-            BuildAvatarPedestal(disc, ring);
+            BuildAvatarPedestal(squareRing);
             AssetDatabase.SaveAssets();
             Debug.Log("[LegendsAlley] Bundled prefabs rebuilt.");
         }
@@ -105,6 +112,50 @@ namespace LegendsNexus.Alley.Editor
             return AssetDatabase.LoadAssetAtPath<Sprite>(path);
         }
 
+        // rounded square outline matching the shape of the avatar picture the
+        // client draws, same stroke weight style as the round ring
+        private static Sprite EnsureSquareRingSprite(string name)
+        {
+            string path = TextureFolder + "/" + name + ".png";
+            if (AssetDatabase.LoadAssetAtPath<Sprite>(path) != null) return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+
+            const int size = 256;
+            const float half = 124f;
+            const float corner = 38f;
+            const float halfThick = 7f;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var pixels = new Color32[size * size];
+            float c = size * 0.5f - 0.5f;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    // signed distance to a rounded rect edge, band of pixels around it
+                    float dx = Mathf.Abs(x - c) - (half - corner);
+                    float dy = Mathf.Abs(y - c) - (half - corner);
+                    float outside = Mathf.Sqrt(Mathf.Max(dx, 0f) * Mathf.Max(dx, 0f) + Mathf.Max(dy, 0f) * Mathf.Max(dy, 0f));
+                    float inside = Mathf.Min(Mathf.Max(dx, dy), 0f);
+                    float d = outside + inside - corner;
+                    float alpha = Mathf.Clamp01(halfThick - Mathf.Abs(d) + 0.5f);
+                    pixels[y * size + x] = new Color32(255, 255, 255, (byte)(alpha * 255f));
+                }
+            }
+            texture.SetPixels32(pixels);
+            File.WriteAllBytes(path, texture.EncodeToPNG());
+            Object.DestroyImmediate(texture);
+            AssetDatabase.ImportAsset(path);
+
+            var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+            importer.textureType = TextureImporterType.Sprite;
+            importer.spriteImportMode = SpriteImportMode.Single;
+            importer.mipmapEnabled = true;
+            importer.wrapMode = TextureWrapMode.Clamp;
+            importer.filterMode = FilterMode.Trilinear;
+            importer.textureCompression = TextureImporterCompression.Compressed;
+            importer.SaveAndReimport();
+            return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        }
+
         private static void BuildGroupButton(Sprite disc, Sprite ring)
         {
             var root = new GameObject("Alley Group Button");
@@ -133,9 +184,10 @@ namespace LegendsNexus.Alley.Editor
             }
         }
 
-        // same compact disc as the group button, the avatar picture the client
-        // draws fills the middle and pressing it switches you into the avatar
-        private static void BuildAvatarPedestal(Sprite disc, Sprite ring)
+        // rounded square outline that hugs the avatar picture the client draws.
+        // root pivot sits at the center of the picture, the placement anchor
+        // hangs below it so the plate lands exactly inside the frame
+        private static void BuildAvatarPedestal(Sprite squareRing)
         {
             var root = new GameObject("Alley Avatar Pedestal");
             try
@@ -144,21 +196,19 @@ namespace LegendsNexus.Alley.Editor
 
                 var collider = root.AddComponent<BoxCollider>();
                 collider.isTrigger = true;
-                collider.size = new Vector3(0.42f, 0.42f, 0.08f);
+                collider.size = new Vector3(PlateSize, PlateSize, 0.1f);
 
                 var pedestal = root.AddComponent<VRCAvatarPedestal>();
                 pedestal.ChangeAvatarsOnUse = true;
-                pedestal.scale = 0.35f;
 
-                // plate floats a hair in front of the disc so it never z-fights
                 var anchor = new GameObject("Avatar Display").transform;
                 anchor.SetParent(root.transform, false);
-                anchor.localPosition = new Vector3(0f, 0f, 0.01f);
+                anchor.localPosition = new Vector3(0f, -PlateCenterOffset, 0.01f);
                 pedestal.Placement = anchor;
 
-                Transform face = MakeWorldCanvas(root.transform, "Button Face", new Vector2(512f, 512f), 0.00082f, Vector3.zero);
-                AddImage(face, "Ring", ring, Purple, new Vector2(512f, 512f));
-                AddImage(face, "Disc", disc, CardDark, new Vector2(470f, 470f));
+                float frameSize = PlateSize + 0.14f;
+                Transform face = MakeWorldCanvas(root.transform, "Frame", new Vector2(512f, 512f), frameSize / 512f, Vector3.zero);
+                AddImage(face, "Outline", squareRing, Purple, new Vector2(512f, 512f));
 
                 helper.displayAnchor = anchor;
 
