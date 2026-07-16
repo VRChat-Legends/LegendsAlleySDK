@@ -166,7 +166,7 @@ namespace LegendsNexus.Alley.Editor
         {
             var textures = new HashSet<Texture>();
             var meshes = new HashSet<Mesh>();
-            long diskBytes = 0;
+            long audioBytes = 0;
             var countedPaths = new HashSet<string>();
 
             foreach (Object dependency in EditorUtility.CollectDependencies(new Object[] { root }))
@@ -177,9 +177,14 @@ namespace LegendsNexus.Alley.Editor
                 if (dependency is Texture texture && !editorOnly) textures.Add(texture);
                 if (dependency is Mesh mesh) meshes.Add(mesh);
 
-                if (string.IsNullOrEmpty(path) || !path.StartsWith("Assets") || !countedPaths.Add(path)) continue;
-                var info = new FileInfo(path);
-                if (info.Exists) diskBytes += info.Length;
+                // audio ships close to its source file size, everything else is
+                // estimated from what the import pipeline produces instead of raw
+                // source bytes (a 60MB png source can import to a 5MB texture)
+                if (dependency is AudioClip && !string.IsNullOrEmpty(path) && path.StartsWith("Assets") && countedPaths.Add(path))
+                {
+                    var info = new FileInfo(path);
+                    if (info.Exists) audioBytes += info.Length;
+                }
             }
 
             long vramBytes = 0;
@@ -220,7 +225,9 @@ namespace LegendsNexus.Alley.Editor
             stats.uniqueTextures = textures.Count;
             stats.maxTextureResolution = maxResolution;
             stats.vramMB = Mathf.Round(vramBytes / 1048576f * 10f) / 10f;
-            stats.buildSizeMB = Mathf.Round(diskBytes / 1048576f * 10f) / 10f;
+            // what the booth adds to the event world build: imported textures and
+            // meshes plus audio files
+            stats.buildSizeMB = Mathf.Round((vramBytes + audioBytes) / 1048576f * 10f) / 10f;
         }
 
         // rough gpu bytes for the format the standalone build will import this
