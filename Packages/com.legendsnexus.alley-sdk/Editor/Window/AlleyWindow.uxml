@@ -54,7 +54,7 @@
                             text="No booth found in the open scene. Add the Legends Booth component to your booth's root object." />
                         <ui:DropdownField name="booth-dropdown" />
                         <ui:VisualElement name="check-wrap" class="alley-shadow alley-shadow-teal">
-                            <ui:Button name="check-button" text="CHECK BOOTH" class="alley-button-secondary" />
+                            <ui:Button name="check-button" text="REFRESH BOOTH INFO" class="alley-button-secondary" />
                         </ui:VisualElement>
                         <ui:VisualElement name="blockers" class="alley-blockers" />
                         <ui:VisualElement name="checklist" class="alley-checklist" />

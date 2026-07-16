@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace LegendsNexus.Alley.Editor
 {
@@ -16,6 +17,10 @@ namespace LegendsNexus.Alley.Editor
         public string Limit;
         public CheckSeverity Severity;
         public string Hint;
+        // true when the value is actually past the limit, not just close to it
+        public bool OverLimit;
+        // scene objects or assets responsible for the number, for the select button
+        public Object[] Offenders;
     }
 
     public class BoothReport

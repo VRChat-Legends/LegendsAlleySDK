@@ -991,6 +991,19 @@ namespace LegendsNexus.Alley.Editor
         private LegendsBooth SelectedBooth =>
             _boothDropdown.index >= 0 && _boothDropdown.index < _booths.Length ? _booths[_boothDropdown.index] : null;
 
+        private static void SelectOffenders(CheckRow check)
+        {
+            var alive = new List<UnityEngine.Object>();
+            foreach (UnityEngine.Object offender in check.Offenders)
+            {
+                if (offender != null) alive.Add(offender);
+            }
+            if (alive.Count == 0) return;
+            // works for both scene objects (hierarchy) and assets (project window)
+            Selection.objects = alive.ToArray();
+            EditorGUIUtility.PingObject(alive[0]);
+        }
+
         private void RunCheck()
         {
             LegendsBooth booth = SelectedBooth;
@@ -1026,6 +1039,30 @@ namespace LegendsNexus.Alley.Editor
                 label.AddToClassList("alley-check-label");
                 row.Add(value);
                 row.Add(label);
+
+                // little magnifier that selects whatever pushed the card over
+                if (check.OverLimit && check.Offenders != null && check.Offenders.Length > 0)
+                {
+                    CheckRow captured = check;
+                    var select = new Button(() => SelectOffenders(captured))
+                    {
+                        tooltip = "Select the objects responsible for this",
+                    };
+                    select.AddToClassList("alley-check-select");
+                    Texture icon = EditorGUIUtility.IconContent("d_ViewToolZoom").image;
+                    if (icon != null)
+                    {
+                        var image = new Image { image = icon };
+                        image.AddToClassList("alley-check-select-icon");
+                        select.Add(image);
+                    }
+                    else
+                    {
+                        select.text = "?";
+                    }
+                    row.Add(select);
+                }
+
                 AnimateRow(row, _checklist.childCount);
                 _checklist.Add(row);
 
@@ -1141,11 +1178,6 @@ namespace LegendsNexus.Alley.Editor
         private void SetStatus(string message)
         {
             if (_statusLabel != null) _statusLabel.text = message;
-        }
-
-        private void OnFocus()
-        {
-            if (AlleySession.IsSignedIn && _boothDropdown != null) RefreshBooths();
         }
     }
 }

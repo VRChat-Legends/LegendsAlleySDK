@@ -408,6 +408,31 @@
 .alley-check-warn .alley-check-value { color: #FFD700; }
 .alley-check-fail .alley-check-value { color: #FF33A1; }
 
+/* magnifier in the card corner, selects the offending objects or assets */
+.alley-check-select {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    margin: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.06);
+    border-width: 0;
+    border-radius: 3px;
+    color: #C9CDD3;
+    font-size: 10px;
+}
+
+.alley-check-select:hover { background-color: rgba(255, 0, 122, 0.3); }
+
+.alley-check-select-icon {
+    width: 14px;
+    height: 14px;
+}
+
 .alley-check-hint {
     width: 100%;
     color: #FF33A1;

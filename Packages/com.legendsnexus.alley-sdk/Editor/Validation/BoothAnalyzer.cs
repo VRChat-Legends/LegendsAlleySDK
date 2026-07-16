@@ -24,6 +24,22 @@ namespace LegendsNexus.Alley.Editor
             SkinnedMeshRenderer[] skinned = root.GetComponentsInChildren<SkinnedMeshRenderer>(true);
             ParticleSystem[] particles = root.GetComponentsInChildren<ParticleSystem>(true);
             Animator[] animators = root.GetComponentsInChildren<Animator>(true);
+            UdonBehaviour[] udon = root.GetComponentsInChildren<UdonBehaviour>(true);
+            VRCPickup[] pickups = root.GetComponentsInChildren<VRCPickup>(true);
+            VRCAvatarPedestal[] pedestals = root.GetComponentsInChildren<VRCAvatarPedestal>(true);
+            VRCPortalMarker[] portals = root.GetComponentsInChildren<VRCPortalMarker>(true);
+            AudioSource[] audioSources = root.GetComponentsInChildren<AudioSource>(true);
+
+            var textObjects = new List<Component>();
+            textObjects.AddRange(root.GetComponentsInChildren<TMP_Text>(true));
+            textObjects.AddRange(root.GetComponentsInChildren<UnityEngine.UI.Text>(true));
+            textObjects.AddRange(root.GetComponentsInChildren<TextMesh>(true));
+
+            var oddColliders = new List<Component>();
+            foreach (Collider collider in root.GetComponentsInChildren<Collider>(true))
+            {
+                if (!(collider is BoxCollider)) oddColliders.Add(collider);
+            }
 
             BoothStatsPayload stats = report.Stats;
             stats.boundsMeters = MeasureBounds(renderers);
@@ -35,25 +51,59 @@ namespace LegendsNexus.Alley.Editor
             stats.totalParticles = CountMaxParticles(particles);
             stats.animators = animators.Length;
             stats.animationClips = CountClips(animators);
-            stats.udonScripts = root.GetComponentsInChildren<UdonBehaviour>(true).Length;
-            stats.pickups = root.GetComponentsInChildren<VRCPickup>(true).Length;
-            stats.avatarPedestals = root.GetComponentsInChildren<VRCAvatarPedestal>(true).Length;
-            stats.portals = root.GetComponentsInChildren<VRCPortalMarker>(true).Length;
-            stats.textComponents = CountTextComponents(root);
-            AudioSource[] audioSources = root.GetComponentsInChildren<AudioSource>(true);
+            stats.udonScripts = udon.Length;
+            stats.pickups = pickups.Length;
+            stats.avatarPedestals = pedestals.Length;
+            stats.portals = portals.Length;
+            stats.textComponents = textObjects.Count;
             stats.audioSources = audioSources.Length;
             foreach (AudioSource source in audioSources)
             {
                 stats.audioRangeMeters = Mathf.Max(stats.audioRangeMeters, source.maxDistance);
             }
-            stats.nonBoxColliders = CountNonBoxColliders(root);
+            stats.nonBoxColliders = oddColliders.Count;
+
+            // who to select when a card goes over, keyed by the row label
+            var meshComponents = new List<Component>();
+            meshComponents.AddRange(meshFilters);
+            meshComponents.AddRange(skinned);
+            var offenders = new Dictionary<string, Object[]>
+            {
+                ["Size"] = CollectEdgeRenderers(renderers),
+                ["Triangles"] = DistinctGameObjects(meshComponents),
+                ["Material slots"] = DistinctGameObjects(renderers),
+                ["Est. draw calls"] = DistinctGameObjects(renderers),
+                ["Est. set passes"] = DistinctGameObjects(renderers),
+                ["Static meshes"] = DistinctGameObjects(meshFilters),
+                ["Skinned meshes"] = DistinctGameObjects(skinned),
+                ["Particle systems"] = DistinctGameObjects(particles),
+                ["Total particles"] = DistinctGameObjects(particles),
+                ["Animators"] = DistinctGameObjects(animators),
+                ["Animation clips"] = DistinctGameObjects(animators),
+                ["Udon scripts"] = DistinctGameObjects(udon),
+                ["Pickups"] = DistinctGameObjects(pickups),
+                ["Avatar pedestals"] = DistinctGameObjects(pedestals),
+                ["Portals"] = DistinctGameObjects(portals),
+                ["Text components"] = DistinctGameObjects(textObjects),
+                ["Audio sources"] = DistinctGameObjects(audioSources),
+                ["Non-box colliders"] = DistinctGameObjects(oddColliders),
+            };
+            if (limits != null && limits.maxAudioRangeMeters > 0f)
+            {
+                var loud = new List<Component>();
+                foreach (AudioSource source in audioSources)
+                {
+                    if (source.maxDistance > limits.maxAudioRangeMeters) loud.Add(source);
+                }
+                offenders["Audio range (m)"] = DistinctGameObjects(loud);
+            }
 
             // probuilder pieces collapse to one renderer with one material at
             // package time, so estimate against what actually ships
             HashSet<Renderer> pbRenderers = ProBuilderBaker.CollectPieceRenderers(root);
             EstimateRendering(renderers, pbRenderers, stats, report);
 
-            CollectAssetStats(root, stats, report);
+            CollectAssetStats(root, stats, report, offenders);
             CollectBlockers(root, report);
 
             int pbMeshes = ProBuilderBaker.CountMeshes(root);
@@ -70,7 +120,55 @@ namespace LegendsNexus.Alley.Editor
             }
 
             if (limits != null) BuildChecklist(report, limits, limitsBypass);
+
+            foreach (CheckRow row in report.Rows)
+            {
+                if (row.Offenders == null && offenders.TryGetValue(row.Label, out Object[] objs) && objs.Length > 0)
+                {
+                    row.Offenders = objs;
+                }
+            }
             return report;
+        }
+
+        private static Object[] DistinctGameObjects<T>(IEnumerable<T> components) where T : Component
+        {
+            var seen = new HashSet<GameObject>();
+            var result = new List<Object>();
+            foreach (T component in components)
+            {
+                if (component != null && seen.Add(component.gameObject)) result.Add(component.gameObject);
+            }
+            return result.ToArray();
+        }
+
+        // renderers touching the combined bounds faces, the stuff to look at when
+        // the booth is too big
+        private static Object[] CollectEdgeRenderers(Renderer[] renderers)
+        {
+            if (renderers.Length == 0) return new Object[0];
+            Vector3 min = renderers[0].bounds.min;
+            Vector3 max = renderers[0].bounds.max;
+            foreach (Renderer renderer in renderers)
+            {
+                min = Vector3.Min(min, renderer.bounds.min);
+                max = Vector3.Max(max, renderer.bounds.max);
+            }
+            const float epsilon = 0.01f;
+            var edge = new List<Component>();
+            foreach (Renderer renderer in renderers)
+            {
+                Bounds b = renderer.bounds;
+                for (int axis = 0; axis < 3; axis++)
+                {
+                    if (b.min[axis] <= min[axis] + epsilon || b.max[axis] >= max[axis] - epsilon)
+                    {
+                        edge.Add(renderer);
+                        break;
+                    }
+                }
+            }
+            return DistinctGameObjects(edge);
         }
 
         private static BoundsLimit MeasureBounds(Renderer[] renderers)
@@ -152,17 +250,10 @@ namespace LegendsNexus.Alley.Editor
             return clips.Count;
         }
 
-        private static int CountTextComponents(GameObject root)
-        {
-            return root.GetComponentsInChildren<TMP_Text>(true).Length
-                + root.GetComponentsInChildren<UnityEngine.UI.Text>(true).Length
-                + root.GetComponentsInChildren<TextMesh>(true).Length;
-        }
-
         // texture list, vram guess, and on disk size all come from the dependency walk.
         // texture memory is estimated from the format the BUILD will use (import
         // settings), not whatever the editor cache holds right now
-        private static void CollectAssetStats(GameObject root, BoothStatsPayload stats, BoothReport report)
+        private static void CollectAssetStats(GameObject root, BoothStatsPayload stats, BoothReport report, Dictionary<string, Object[]> offenders)
         {
             var textures = new HashSet<Texture>();
             var meshes = new HashSet<Mesh>();
@@ -192,14 +283,18 @@ namespace LegendsNexus.Alley.Editor
             int uncompressedCount = 0;
             long uncompressedBytes = 0;
             var uncompressedNames = new List<string>();
+            var uncompressedTextures = new List<Object>();
+            var textureSizes = new List<(Texture texture, long bytes)>();
             foreach (Texture texture in textures)
             {
                 long bytes = EstimateTextureBytes(texture, out bool uncompressed);
                 vramBytes += bytes;
+                textureSizes.Add((texture, bytes));
                 if (uncompressed && texture.width * texture.height >= 512 * 512)
                 {
                     uncompressedCount++;
                     uncompressedBytes += bytes;
+                    uncompressedTextures.Add(texture);
                     if (uncompressedNames.Count < 6) uncompressedNames.Add(texture.name);
                 }
                 maxResolution = Mathf.Max(maxResolution, Mathf.Max(texture.width, texture.height));
@@ -210,6 +305,20 @@ namespace LegendsNexus.Alley.Editor
                 vramBytes += Profiler.GetRuntimeMemorySizeLong(mesh) / 2;
             }
 
+            // texture rows select the actual assets in the project window, fattest first
+            textureSizes.Sort((a, b) => b.bytes.CompareTo(a.bytes));
+            var byWeight = new List<Object>();
+            var biggest = new List<Object>();
+            foreach ((Texture texture, long bytes) in textureSizes)
+            {
+                byWeight.Add(texture);
+                if (Mathf.Max(texture.width, texture.height) >= maxResolution) biggest.Add(texture);
+            }
+            offenders["Unique textures"] = byWeight.ToArray();
+            offenders["Memory estimate (MB)"] = byWeight.ToArray();
+            offenders["Build size (MB)"] = byWeight.ToArray();
+            offenders["Largest texture"] = biggest.ToArray();
+
             if (uncompressedCount > 0)
             {
                 report.Rows.Add(new CheckRow
@@ -219,6 +328,8 @@ namespace LegendsNexus.Alley.Editor
                     Limit = "compress them",
                     Severity = CheckSeverity.Warn,
                     Hint = $"These textures have compression turned off in their import settings and eat most of the memory budget: {string.Join(", ", uncompressedNames)}. Select them in the Project window and set Compression to Normal Quality, that usually shrinks them 4-6x.",
+                    OverLimit = true,
+                    Offenders = uncompressedTextures.ToArray(),
                 });
             }
 
@@ -274,16 +385,6 @@ namespace LegendsNexus.Alley.Editor
             return 32f;
         }
 
-        private static int CountNonBoxColliders(GameObject root)
-        {
-            int count = 0;
-            foreach (Collider collider in root.GetComponentsInChildren<Collider>(true))
-            {
-                if (!(collider is BoxCollider)) count++;
-            }
-            return count;
-        }
-
         // draw calls ~= material slots before batching, set passes ~= unique
         // materials. baked probuilder pieces count as one of each. also collects
         // the shader list the package will ship and flags off whitelist ones
@@ -331,11 +432,13 @@ namespace LegendsNexus.Alley.Editor
         {
             int missingScripts = 0;
             string missingOn = null;
+            var missingHosts = new List<Object>();
             foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
             {
                 int count = GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(child.gameObject);
                 if (count == 0) continue;
                 missingScripts += count;
+                missingHosts.Add(child.gameObject);
                 if (missingOn == null) missingOn = child.gameObject.name;
             }
             if (missingScripts > 0)
@@ -347,6 +450,8 @@ namespace LegendsNexus.Alley.Editor
                     Limit = "removed at upload",
                     Severity = CheckSeverity.Warn,
                     Hint = $"Found {missingScripts} missing script{(missingScripts > 1 ? "s" : "")} (first on \"{missingOn}\"). They get stripped from the upload copy automatically, remove them yourself if that is not what you want.",
+                    OverLimit = true,
+                    Offenders = missingHosts.ToArray(),
                 });
             }
 
@@ -392,6 +497,7 @@ namespace LegendsNexus.Alley.Editor
                 Limit = $"{bounds.x} x {bounds.y} x {bounds.z}m",
                 Severity = boundsOk ? CheckSeverity.Pass : limitsBypass ? CheckSeverity.Warn : CheckSeverity.Fail,
                 Hint = boundsOk ? null : "Shrink the booth so it fits inside the size box.",
+                OverLimit = !boundsOk,
             });
 
             AddCount(report, "Triangles", stats.triangles, limits.maxTriangles, limitsBypass);
@@ -427,6 +533,7 @@ namespace LegendsNexus.Alley.Editor
                     Limit = limits.maxAudioRangeMeters.ToString("0.#"),
                     Severity = audioOver ? CheckSeverity.Warn : CheckSeverity.Pass,
                     Hint = audioOver ? $"Sounds reach past {limits.maxAudioRangeMeters:0.#}m. The range gets clamped at upload so audio stays near your booth." : null,
+                    OverLimit = audioOver,
                 });
                 if (audioOver) stats.audioRangeMeters = limits.maxAudioRangeMeters;
             }
@@ -439,6 +546,7 @@ namespace LegendsNexus.Alley.Editor
                 Limit = limits.maxNonBoxColliders.ToString(),
                 Severity = collidersOk ? CheckSeverity.Pass : limitsBypass ? CheckSeverity.Warn : CheckSeverity.Fail,
                 Hint = collidersOk ? null : "Only box colliders are allowed. Replace mesh, sphere, capsule, wheel, and terrain colliders with box colliders.",
+                OverLimit = !collidersOk,
             });
         }
 
@@ -456,6 +564,7 @@ namespace LegendsNexus.Alley.Editor
                 Hint = value > limit
                     ? (limitsBypass ? $"Over the normal limit of {limit:0.#}, allowed by your limits bypass." : $"Bring {label.ToLower()} down to {limit:0.#} or less.")
                     : null,
+                OverLimit = value > limit,
             });
         }
 
@@ -472,6 +581,7 @@ namespace LegendsNexus.Alley.Editor
                     Hint = limitsBypass
                         ? $"This event normally does not allow {label.ToLower()}, allowed by your limits bypass."
                         : $"This event does not allow {label.ToLower()}, remove them.",
+                    OverLimit = true,
                 });
                 return;
             }
