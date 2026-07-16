@@ -150,7 +150,10 @@ namespace LegendsNexus.Alley
             }
             else if (_paused)
             {
-                _paused = false;
+                // the flag stays set until OnVideoPlay confirms the resume. clearing
+                // it here lets the state tick see "stopped" and issue a fresh
+                // PlayURL, which reloads the whole video instead of resuming
+                SetStatus("RESUMING");
                 videoPlayer.Play();
             }
             else if (!_loading)
@@ -213,7 +216,9 @@ namespace LegendsNexus.Alley
 
         public override void OnVideoEnd()
         {
-            if (!_inRange) return;
+            // a paused video cant genuinely end, some player backends emit
+            // spurious end events around pause
+            if (!_inRange || _paused) return;
             _playing = false;
             float duration = videoPlayer.GetDuration();
             if (duration <= 0f || float.IsInfinity(duration))
