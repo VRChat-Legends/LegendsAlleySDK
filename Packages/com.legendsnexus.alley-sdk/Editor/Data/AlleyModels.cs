@@ -74,6 +74,7 @@ namespace LegendsNexus.Alley.Editor
         public string groupId;
         public string ownerDiscordId;
         public string ownerUsername;
+        public bool limitsBypass;
     }
 
     [Serializable]

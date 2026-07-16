@@ -992,7 +992,7 @@ namespace LegendsNexus.Alley.Editor
                 return;
             }
 
-            _report = BoothAnalyzer.Analyze(booth, AlleySession.SelectedEvent.limits);
+            _report = BoothAnalyzer.Analyze(booth, AlleySession.SelectedEvent.limits, AlleySession.Community?.limitsBypass ?? false);
 
             foreach (string blocker in _report.Blockers)
             {
