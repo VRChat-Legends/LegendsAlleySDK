@@ -14,7 +14,20 @@ namespace LegendsNexus.Alley.Editor
         public static void Store(StaffCommunity[] list)
         {
             Communities = list ?? Array.Empty<StaffCommunity>();
-            Changed?.Invoke();
+            if (Changed == null) return;
+            // dead inspectors linger on this event with disposed serialized objects,
+            // one of them throwing must not stop the rest (or the caller) from updating
+            foreach (Delegate handler in Changed.GetInvocationList())
+            {
+                try
+                {
+                    ((Action)handler)();
+                }
+                catch
+                {
+                    Changed -= (Action)handler;
+                }
+            }
         }
 
         // fire and forget refresh for inspectors, only does anything for signed in staff

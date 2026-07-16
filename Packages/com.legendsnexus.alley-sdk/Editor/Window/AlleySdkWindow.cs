@@ -579,6 +579,12 @@ namespace LegendsNexus.Alley.Editor
             {
                 SetStatus(e.Message);
             }
+            catch (Exception e)
+            {
+                // fire and forget callers would eat this silently otherwise
+                SetStatus("Staff refresh failed: " + e.Message);
+                Debug.LogException(e);
+            }
         }
 
         private void PopulateStaffCommunities(StaffCommunity[] list)

@@ -36,6 +36,18 @@ namespace LegendsNexus.Alley.Editor
 
             void BuildReserved()
             {
+                // the editor can be destroyed while still subscribed, bail before touching disposed state
+                try
+                {
+                    if (target == null) throw new System.ObjectDisposedException("editor");
+                    _ = serializedObject.isEditingMultipleObjects;
+                }
+                catch
+                {
+                    StaffCommunityCache.Changed -= BuildReserved;
+                    return;
+                }
+
                 reservedSlot.Clear();
                 StaffCommunity[] roster = StaffCommunityCache.Communities;
                 if (serializedObject.isEditingMultipleObjects || roster.Length == 0)
