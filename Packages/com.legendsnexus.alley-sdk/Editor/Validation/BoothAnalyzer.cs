@@ -40,7 +40,12 @@ namespace LegendsNexus.Alley.Editor
             stats.avatarPedestals = root.GetComponentsInChildren<VRCAvatarPedestal>(true).Length;
             stats.portals = root.GetComponentsInChildren<VRCPortalMarker>(true).Length;
             stats.textComponents = CountTextComponents(root);
-            stats.audioSources = root.GetComponentsInChildren<AudioSource>(true).Length;
+            AudioSource[] audioSources = root.GetComponentsInChildren<AudioSource>(true);
+            stats.audioSources = audioSources.Length;
+            foreach (AudioSource source in audioSources)
+            {
+                stats.audioRangeMeters = Mathf.Max(stats.audioRangeMeters, source.maxDistance);
+            }
             stats.nonBoxColliders = CountNonBoxColliders(root);
 
             // probuilder pieces collapse to one renderer with one material at
@@ -402,6 +407,22 @@ namespace LegendsNexus.Alley.Editor
             AddGated(report, "Portals", stats.portals, limits.maxPortals, limits.allowPortals, limitsBypass);
             AddCount(report, "Text components", stats.textComponents, limits.maxTextComponents, limitsBypass);
             AddCount(report, "Audio sources", stats.audioSources, limits.maxAudioSources, limitsBypass);
+
+            // range gets clamped by the packager, so this warns instead of blocking
+            // and the uploaded stat reports what actually ships
+            if (limits.maxAudioRangeMeters > 0f && stats.audioSources > 0)
+            {
+                bool audioOver = stats.audioRangeMeters > limits.maxAudioRangeMeters;
+                report.Rows.Add(new CheckRow
+                {
+                    Label = "Audio range (m)",
+                    Value = stats.audioRangeMeters.ToString("0.#"),
+                    Limit = limits.maxAudioRangeMeters.ToString("0.#"),
+                    Severity = audioOver ? CheckSeverity.Warn : CheckSeverity.Pass,
+                    Hint = audioOver ? $"Sounds reach past {limits.maxAudioRangeMeters:0.#}m. The range gets clamped at upload so audio stays near your booth." : null,
+                });
+                if (audioOver) stats.audioRangeMeters = limits.maxAudioRangeMeters;
+            }
 
             bool collidersOk = stats.nonBoxColliders <= limits.maxNonBoxColliders;
             report.Rows.Add(new CheckRow

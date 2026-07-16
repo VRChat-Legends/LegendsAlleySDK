@@ -35,7 +35,7 @@ namespace LegendsNexus.Alley.Editor
                 // sits and which way the front faces at import time
                 duplicate.transform.position = Vector3.zero;
                 duplicate.transform.rotation = Quaternion.identity;
-                PrepareForEvent(duplicate);
+                PrepareForEvent(duplicate, alleyEvent.limits);
 
                 if (!AssetDatabase.IsValidFolder(ExportFolder))
                 {
@@ -87,7 +87,7 @@ namespace LegendsNexus.Alley.Editor
         }
 
         // fixes applied to the export copy only, the scene object stays untouched
-        private static void PrepareForEvent(GameObject root)
+        private static void PrepareForEvent(GameObject root, EventLimits limits)
         {
             // leftover missing scripts make SaveAsPrefabAsset refuse the whole booth,
             // and they carry nothing the event world could run anyway
@@ -113,9 +113,14 @@ namespace LegendsNexus.Alley.Editor
                 UnityEngine.Object.DestroyImmediate(probe);
             }
 
+            float maxAudioRange = limits != null && limits.maxAudioRangeMeters > 0f ? limits.maxAudioRangeMeters : 0f;
             foreach (AudioSource source in root.GetComponentsInChildren<AudioSource>(true))
             {
                 source.spatialBlend = 1f;
+                if (maxAudioRange > 0f && source.maxDistance > maxAudioRange)
+                {
+                    source.maxDistance = maxAudioRange;
+                }
             }
         }
 

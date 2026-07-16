@@ -5,7 +5,7 @@ namespace LegendsNexus.Alley.Editor
     // event shader whitelist, the backend re-checks the same list server side
     internal static class AlleyShaderRules
     {
-        public const string Description = "Standard, z3y, Filamented, unlit, legacy, TMP, UI, or particle shaders";
+        public const string Description = "Standard, z3y, Filamented, Poiyomi (not Pro), lilToon, unlit, legacy, TMP, UI, or particle shaders";
 
         private static readonly HashSet<string> AllowedExact = new HashSet<string>
         {
@@ -32,6 +32,9 @@ namespace LegendsNexus.Alley.Editor
         {
             if (string.IsNullOrEmpty(shaderName)) return false;
             if (AllowedExact.Contains(shaderName)) return true;
+            // limited custom shaders: poiyomi minus the pro build, liltoon as shipped
+            if (shaderName.StartsWith(".poiyomi/", System.StringComparison.Ordinal) && !shaderName.Contains("Pro")) return true;
+            if (shaderName == "lilToon" || shaderName.StartsWith("lilToon/", System.StringComparison.Ordinal)) return true;
             foreach (string prefix in AllowedPrefixes)
             {
                 if (shaderName.StartsWith(prefix, System.StringComparison.Ordinal)) return true;

@@ -33,6 +33,7 @@ namespace LegendsNexus.Alley.Editor
         public int maxPortals;
         public int maxTextComponents;
         public int maxAudioSources;
+        public float maxAudioRangeMeters;
         public int maxEstimatedDrawCalls;
         public int maxEstimatedSetPasses;
         public int maxNonBoxColliders;
@@ -74,6 +75,7 @@ namespace LegendsNexus.Alley.Editor
         public string groupId;
         public string ownerDiscordId;
         public string ownerUsername;
+        public string[] teamMembers;
         public bool limitsBypass;
     }
 
@@ -214,6 +216,7 @@ namespace LegendsNexus.Alley.Editor
         public int portals;
         public int textComponents;
         public int audioSources;
+        public float audioRangeMeters;
         public int estimatedDrawCalls;
         public int estimatedSetPasses;
         public int nonBoxColliders;
