@@ -245,20 +245,6 @@
     translate: 0 0;
 }
 
-.alley-button-staff {
-    background-color: #FFD700;
-}
-
-.alley-button-staff:hover {
-    background-color: #FFE44D;
-    translate: -5px -5px;
-}
-
-.alley-button-staff:active {
-    background-color: #E0BD00;
-    translate: 0 0;
-}
-
 .alley-button-secondary {
     background-color: #14161A;
     color: #6AE3F9;
@@ -527,9 +513,14 @@
     border-color: #1FD1ED;
 }
 
+/* hidden until the first log line shows up */
+.alley-staff-log-section {
+    display: none;
+}
+
 .alley-staff-log {
     max-height: 180px;
-    margin-top: 10px;
+    margin-top: 6px;
     background-color: #0A0A0A;
     border-width: 2px;
     border-color: #23262B;
@@ -610,20 +601,173 @@
     white-space: nowrap;
 }
 
-/* placement action row */
-.alley-staff-actions {
-    flex-direction: row;
-    align-items: flex-end;
-}
-
 .alley-grow {
     flex-grow: 1;
 }
 
-.alley-randomize {
-    margin-left: 10px;
-    margin-bottom: 3px;
-    align-self: flex-end;
+/* plot occupancy tiles across the top of the placement card */
+.alley-plot-stats {
+    flex-direction: row;
+    margin-top: 2px;
+}
+
+.alley-stat-tile {
+    flex-grow: 1;
+    flex-basis: 22%;
+    align-items: center;
+    padding: 8px 4px 6px 4px;
+    margin: 0 2px;
+    background-color: #0E1013;
+    border-top-width: 3px;
+    border-top-color: #2A2D33;
+}
+
+.alley-stat-value {
+    -unity-font-style: bold;
+    font-size: 15px;
+    color: #FFFFFF;
+}
+
+.alley-stat-label {
+    color: #8B919A;
+    font-size: 9px;
+    letter-spacing: 1px;
+    margin-top: 1px;
+}
+
+.alley-stat-total { border-top-color: #5A5F66; }
+.alley-stat-filled { border-top-color: #1FD1ED; }
+.alley-stat-filled .alley-stat-value { color: #1FD1ED; }
+.alley-stat-free { border-top-color: #FFD700; }
+.alley-stat-free .alley-stat-value { color: #FFD700; }
+.alley-stat-locked { border-top-color: #6B46C1; }
+.alley-stat-locked .alley-stat-value { color: #9B7BD4; }
+
+/* sub sections inside a card */
+.alley-group-label {
+    margin-top: 16px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    -unity-font-style: bold;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.alley-group-hint {
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 10px;
+    white-space: normal;
+    margin-top: 1px;
+}
+
+.alley-divider {
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.08);
+    margin-top: 16px;
+}
+
+/* booth + plot pickers side by side */
+.alley-place-grid {
+    flex-direction: row;
+    margin-top: 2px;
+}
+
+.alley-place-col {
+    flex-grow: 1;
+    flex-basis: 50%;
+}
+
+.alley-place-col-left {
+    margin-right: 8px;
+}
+
+.alley-place-col .alley-field-label {
+    margin-top: 4px;
+}
+
+.alley-place-col .unity-base-popup-field {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+/* event action list, description left and compact button right */
+.alley-action-row {
+    flex-direction: row;
+    align-items: center;
+    padding: 8px 10px;
+    margin-top: 6px;
+    background-color: #0E1013;
+    border-left-width: 3px;
+    border-left-color: #2A2D33;
+}
+
+.alley-action-sync { border-left-color: #FFD700; }
+.alley-action-shuffle { border-left-color: #6B46C1; }
+.alley-action-impostors { border-left-color: #1FD1ED; }
+
+.alley-action-text {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-right: 10px;
+}
+
+.alley-action-title {
+    -unity-font-style: bold;
+    color: #FFFFFF;
+    font-size: 11px;
+}
+
+.alley-action-desc {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 10px;
+    white-space: normal;
+    margin-top: 1px;
+}
+
+.alley-action-button {
+    flex-shrink: 0;
+    align-self: center;
+    min-width: 82px;
+    padding: 7px 10px;
+    margin: 0;
+    background-color: rgba(0, 0, 0, 0);
+    color: rgba(255, 255, 255, 0.65);
+    border-width: 2px;
+    border-color: rgba(255, 255, 255, 0.22);
+    border-radius: 0;
+    font-size: 10px;
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+    transition-property: color, border-color, background-color;
+    transition-duration: 0.12s;
+}
+
+.alley-action-button:hover {
+    color: #FFD700;
+    border-color: #FFD700;
+    background-color: rgba(255, 215, 0, 0.08);
+}
+
+.alley-action-button:disabled {
+    color: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.alley-action-button-gold {
+    background-color: #FFD700;
+    border-color: #FFD700;
+    color: #050505;
+}
+
+.alley-action-button-gold:hover {
+    background-color: #FFE44D;
+    border-color: #FFE44D;
+    color: #050505;
+}
+
+.alley-action-button-gold:disabled {
+    background-color: #23262B;
+    border-color: #23262B;
+    color: rgba(255, 255, 255, 0.35);
 }
 
 /* upload confirm, darkened backdrop with a bottom sheet */

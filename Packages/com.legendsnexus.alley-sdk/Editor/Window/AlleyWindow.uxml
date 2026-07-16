@@ -109,23 +109,53 @@
                     <ui:VisualElement class="alley-card alley-card-gold">
                         <ui:Label text="BOOTH PLACEMENT" class="alley-section-label alley-label-gold" />
                         <ui:Label name="staff-plots-summary" text="" class="alley-body" />
-                        <ui:Label text="BOOTH" class="alley-field-label" />
-                        <ui:DropdownField name="place-booth-dropdown" />
-                        <ui:Label text="PLOT" class="alley-field-label" />
-                        <ui:DropdownField name="place-plot-dropdown" />
+                        <ui:VisualElement name="staff-plot-stats" class="alley-plot-stats" />
+
+                        <ui:Label text="MANUAL PLACEMENT" class="alley-group-label" />
+                        <ui:Label text="Put one booth on a chosen plot. Picking a filled plot replaces it, and the booth gets pulled off any plot it was on before." class="alley-group-hint" />
+                        <ui:VisualElement class="alley-place-grid">
+                            <ui:VisualElement class="alley-place-col alley-place-col-left">
+                                <ui:Label text="BOOTH" class="alley-field-label" />
+                                <ui:DropdownField name="place-booth-dropdown" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="alley-place-col">
+                                <ui:Label text="PLOT" class="alley-field-label" />
+                                <ui:DropdownField name="place-plot-dropdown" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
                         <ui:VisualElement class="alley-shadow alley-shadow-teal">
                             <ui:Button name="place-button" text="PLACE BOOTH" class="alley-button-secondary" />
                         </ui:VisualElement>
-                        <ui:VisualElement class="alley-staff-actions">
-                            <ui:VisualElement class="alley-shadow alley-shadow-purple alley-grow">
-                                <ui:Button name="staff-sync-button" text="SYNC ALL" class="alley-button-primary alley-button-staff" />
+
+                        <ui:VisualElement class="alley-divider" />
+                        <ui:Label text="EVENT ACTIONS" class="alley-group-label" />
+                        <ui:VisualElement class="alley-action-row alley-action-sync">
+                            <ui:VisualElement class="alley-action-text">
+                                <ui:Label text="Sync all booths" class="alley-action-title" />
+                                <ui:Label text="Downloads the latest version of every uploaded booth and fills the free plots." class="alley-action-desc" />
                             </ui:VisualElement>
-                            <ui:Button name="randomize-button" text="RANDOMIZE" class="alley-button-ghost alley-randomize" />
+                            <ui:Button name="staff-sync-button" text="SYNC ALL" class="alley-action-button alley-action-button-gold" />
                         </ui:VisualElement>
-                        <ui:VisualElement class="alley-shadow alley-shadow-teal">
-                            <ui:Button name="impostors-button" text="MAKE IMPOSTORS" class="alley-button-secondary" />
+                        <ui:VisualElement class="alley-action-row alley-action-shuffle">
+                            <ui:VisualElement class="alley-action-text">
+                                <ui:Label text="Shuffle placements" class="alley-action-title" />
+                                <ui:Label text="Clears every unlocked plot and deals the booths back out in a random order." class="alley-action-desc" />
+                            </ui:VisualElement>
+                            <ui:Button name="randomize-button" text="SHUFFLE" class="alley-action-button" />
                         </ui:VisualElement>
-                        <ui:ScrollView name="staff-log" class="alley-staff-log" />
+                        <ui:VisualElement class="alley-action-row alley-action-impostors">
+                            <ui:VisualElement class="alley-action-text">
+                                <ui:Label text="Bake impostors" class="alley-action-title" />
+                                <ui:Label text="Bakes cheap far away stand ins for every placed booth. Re-run after syncing new versions." class="alley-action-desc" />
+                            </ui:VisualElement>
+                            <ui:Button name="impostors-button" text="BAKE" class="alley-action-button" />
+                        </ui:VisualElement>
+
+                        <ui:VisualElement name="staff-log-section" class="alley-staff-log-section">
+                            <ui:VisualElement class="alley-divider" />
+                            <ui:Label text="ACTIVITY" class="alley-group-label" />
+                            <ui:ScrollView name="staff-log" class="alley-staff-log" />
+                        </ui:VisualElement>
                     </ui:VisualElement>
                 </ui:VisualElement>
             </ui:VisualElement>

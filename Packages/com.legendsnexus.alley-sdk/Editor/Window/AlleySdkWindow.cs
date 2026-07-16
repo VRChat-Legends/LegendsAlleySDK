@@ -58,6 +58,8 @@ namespace LegendsNexus.Alley.Editor
         private Button _staffSyncButton;
         private Button _impostorsButton;
         private Label _staffPlotsSummary;
+        private VisualElement _staffPlotStats;
+        private VisualElement _staffLogSection;
         private ScrollView _staffLog;
         private TextField _communityDescription;
         private TextField _communityInvite;
@@ -121,6 +123,8 @@ namespace LegendsNexus.Alley.Editor
             _staffSyncButton = rootVisualElement.Q<Button>("staff-sync-button");
             _impostorsButton = rootVisualElement.Q<Button>("impostors-button");
             _staffPlotsSummary = rootVisualElement.Q<Label>("staff-plots-summary");
+            _staffPlotStats = rootVisualElement.Q("staff-plot-stats");
+            _staffLogSection = rootVisualElement.Q("staff-log-section");
             _staffLog = rootVisualElement.Q<ScrollView>("staff-log");
             _checkWrap = rootVisualElement.Q("check-wrap");
             _uploadWrap = rootVisualElement.Q("upload-wrap");
@@ -632,9 +636,20 @@ namespace LegendsNexus.Alley.Editor
                 if (location.HasBooth) filled++;
                 if (location.locked) locked++;
             }
-            _staffPlotsSummary.text = locations.Length == 0
-                ? "No Booth Location plots in the open scene. Add the Booth Location component where booths should go."
-                : $"{locations.Length} plot(s): {filled} filled, {locations.Length - filled} free, {locked} locked.";
+            bool hasPlots = locations.Length > 0;
+            _staffPlotsSummary.style.display = hasPlots ? DisplayStyle.None : DisplayStyle.Flex;
+            _staffPlotStats.style.display = hasPlots ? DisplayStyle.Flex : DisplayStyle.None;
+            _staffPlotsSummary.text = hasPlots
+                ? ""
+                : "No Booth Location plots in the open scene. Add the Booth Location component where booths should go.";
+            _staffPlotStats.Clear();
+            if (hasPlots)
+            {
+                AddPlotStat(locations.Length, "PLOTS", "total");
+                AddPlotStat(filled, "FILLED", "filled");
+                AddPlotStat(locations.Length - filled, "FREE", "free");
+                AddPlotStat(locked, "LOCKED", "locked");
+            }
 
             var open = new List<BoothLocation>();
             var plotChoices = new List<string>();
@@ -658,6 +673,20 @@ namespace LegendsNexus.Alley.Editor
             _staffSyncButton.SetEnabled(ready && locations.Length > 0);
             _randomizeButton.SetEnabled(ready && open.Count > 0);
             _placeButton.SetEnabled(ready && open.Count > 0 && _staffBooths.Length > 0);
+        }
+
+        private void AddPlotStat(int value, string label, string kind)
+        {
+            var tile = new VisualElement();
+            tile.AddToClassList("alley-stat-tile");
+            tile.AddToClassList("alley-stat-" + kind);
+            var valueLabel = new Label(value.ToString());
+            valueLabel.AddToClassList("alley-stat-value");
+            tile.Add(valueLabel);
+            var nameLabel = new Label(label);
+            nameLabel.AddToClassList("alley-stat-label");
+            tile.Add(nameLabel);
+            _staffPlotStats.Add(tile);
         }
 
         // pulls the roster and booth list for the staff tab
@@ -897,6 +926,7 @@ namespace LegendsNexus.Alley.Editor
         private void OnImporterLog(string message)
         {
             if (this == null || _staffLog == null) return;
+            _staffLogSection.style.display = DisplayStyle.Flex;
             var line = new Label(message);
             line.AddToClassList("alley-staff-log-line");
             AnimateRow(line, 0);
