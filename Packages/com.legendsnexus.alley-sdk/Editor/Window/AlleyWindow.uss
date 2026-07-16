@@ -75,7 +75,9 @@
     font-size: 11px;
     -unity-font-style: bold;
     letter-spacing: 2px;
-    transition-property: color, border-bottom-color;
+    /* no border-bottom-color here: editor windows stop repainting while idle so
+       the transition stalls at transparent and the underline never shows up */
+    transition-property: color;
     transition-duration: 0.12s;
 }
 

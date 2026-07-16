@@ -517,6 +517,7 @@ namespace LegendsNexus.Alley.Editor
             {
                 bool active = tabId == id;
                 _tabButtons[tabId].EnableInClassList("alley-tab-active", active);
+                _tabButtons[tabId].MarkDirtyRepaint();
                 _tabPages[tabId].style.display = active ? DisplayStyle.Flex : DisplayStyle.None;
             }
 
