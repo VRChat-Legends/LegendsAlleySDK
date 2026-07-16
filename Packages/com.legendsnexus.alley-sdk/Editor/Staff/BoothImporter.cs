@@ -520,12 +520,31 @@ namespace LegendsNexus.Alley.Editor
 
                 Log($"Placed {item.communityName} v{item.version} on plot {location.PlotLabel}.");
                 WarnAboutMissingShaders(item);
+                WarnAboutUdon(instance, item.communityName);
             }
             catch (Exception e)
             {
                 Log($"Could not place {item.communityName}: {e.Message}");
             }
             Advance(queue);
+        }
+
+        // booth unitypackages recompile in this project, so re-check the udon
+        // whitelist here where a tampered sdk cant have skipped it
+        private static void WarnAboutUdon(GameObject instance, string communityName)
+        {
+            foreach (VRC.Udon.UdonBehaviour udon in instance.GetComponentsInChildren<VRC.Udon.UdonBehaviour>(true))
+            {
+                List<string> flagged = AlleyUdonRules.ScanBehaviour(udon, out bool unreadable);
+                if (unreadable)
+                {
+                    Log($"HEADS UP: {communityName} has udon with no readable program on \"{udon.gameObject.name}\". Look at it before the event ships.");
+                }
+                else if (flagged.Count > 0)
+                {
+                    Log($"HEADS UP: {communityName} has udon calling off-whitelist stuff on \"{udon.gameObject.name}\": {string.Join(", ", flagged)}. Review or clear the plot.");
+                }
+            }
         }
 
         // booths self report their shader list at upload, tell staff when this

@@ -50,13 +50,10 @@ namespace LegendsNexus.Alley
         void Start()
         {
             playbackRange = Mathf.Clamp(playbackRange, 3f, 5f);
-            audioRange = Mathf.Clamp(audioRange, 1f, 5f);
-            if (audioSource != null)
-            {
-                audioSource.spatialBlend = 1f;
-                audioSource.maxDistance = audioRange;
-                if (volumeSlider != null) audioSource.volume = volumeSlider.value;
-            }
+            // the audio falloff itself is wired at edit time by the inspector and
+            // clamped again at upload, runtime never touches the range (the event
+            // whitelist bans range writes for every booth, ours included)
+            if (audioSource != null && volumeSlider != null) audioSource.volume = volumeSlider.value;
             if (videoPlayer != null) videoPlayer.Loop = loop;
             SetStatus(HasUrl() ? "WALK UP TO PLAY" : "NO VIDEO SET");
             RefreshIcons();

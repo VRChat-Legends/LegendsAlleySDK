@@ -486,6 +486,22 @@ namespace LegendsNexus.Alley.Editor
             {
                 report.Blockers.Add($"Remove {directional} directional light{(directional > 1 ? "s" : "")}, they affect the whole event world.");
             }
+
+            // every compiled udon program gets read and its calls checked against
+            // the event whitelist, kit scripts and hand written ones alike
+            foreach (UdonBehaviour udon in root.GetComponentsInChildren<UdonBehaviour>(true))
+            {
+                List<string> flagged = AlleyUdonRules.ScanBehaviour(udon, out bool unreadable);
+                if (unreadable)
+                {
+                    report.Blockers.Add($"The Udon on \"{udon.gameObject.name}\" has no readable program. Recompile your scripts, or remove the component if it is empty.");
+                    continue;
+                }
+                if (flagged.Count > 0)
+                {
+                    report.Blockers.Add($"The Udon on \"{udon.gameObject.name}\" calls things booths are not allowed to use: {string.Join(", ", flagged)}. Keep scripts to simple booth interactions or ask staff about the list.");
+                }
+            }
         }
 
         private static void BuildChecklist(BoothReport report, EventLimits limits, bool limitsBypass)

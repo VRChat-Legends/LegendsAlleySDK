@@ -6,6 +6,8 @@
         "VRC.SDKBase",
         "VRC.SDK3",
         "VRC.Udon",
+        "VRC.Udon.Common",
+        "VRC.Udon.UAssembly",
         "VRC.Udon.Editor",
         "UdonSharp.Runtime",
         "UdonSharp.Editor",

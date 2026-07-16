@@ -127,6 +127,15 @@ namespace LegendsNexus.Alley.Editor
             }
 
             float maxAudioRange = limits != null && limits.maxAudioRangeMeters > 0f ? limits.maxAudioRangeMeters : 0f;
+            // video player speakers promise a 5m cap regardless of the event limit
+            foreach (AlleyVideoPlayer player in root.GetComponentsInChildren<AlleyVideoPlayer>(true))
+            {
+                AudioSource speaker = player.audioSource;
+                if (speaker == null) continue;
+                speaker.maxDistance = Mathf.Min(speaker.maxDistance, 5f);
+                var spatial = speaker.GetComponent<VRC.SDKBase.VRC_SpatialAudioSource>();
+                if (spatial != null) spatial.Far = Mathf.Min(spatial.Far, 5f);
+            }
             foreach (AudioSource source in root.GetComponentsInChildren<AudioSource>(true))
             {
                 source.spatialBlend = 1f;
