@@ -1,4 +1,4 @@
-<ui:UXML xmlns:ui="UnityEngine.UIElements">
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
     <ui:VisualElement name="root" class="alley-root">
         <ui:VisualElement name="header" class="alley-header">
             <ui:VisualElement name="header-logo" class="alley-logo" />
@@ -21,6 +21,7 @@
             <ui:Button name="tab-booth" text="BOOTH" class="alley-tab alley-tab-pink" />
             <ui:Button name="tab-community" text="COMMUNITY" class="alley-tab alley-tab-purple" />
             <ui:Button name="tab-staff" text="STAFF" class="alley-tab alley-tab-gold" />
+            <ui:Button name="tab-tools" text="TOOLS" class="alley-tab alley-tab-teal" />
             <ui:Button name="tab-settings" text="SETTINGS" class="alley-tab alley-tab-teal" />
         </ui:VisualElement>
 
@@ -122,6 +123,31 @@
                             <ui:Button name="randomize-button" text="RANDOMIZE" class="alley-button-ghost alley-randomize" />
                         </ui:VisualElement>
                         <ui:ScrollView name="staff-log" class="alley-staff-log" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="page-tools" class="alley-page">
+                <ui:VisualElement class="alley-card-shadow alley-card-shadow-teal">
+                    <ui:VisualElement class="alley-card alley-card-teal">
+                        <ui:Label text="BOOTH OPTIMIZER" class="alley-section-label alley-label-teal" />
+                        <ui:Label class="alley-body"
+                            text="Combines every mesh into one and packs the textures into shared atlases so your booth spends less of the event budget. Works on a copy, your original booth just gets disabled so you can always go back." />
+                        <uie:ObjectField name="optimize-target" label="Booth root" />
+                        <ui:SliderInt name="optimize-materials" label="Target materials" low-value="1" high-value="4" value="1" show-input-field="true" />
+                        <ui:DropdownField name="optimize-atlas-size" label="Atlas size" />
+                        <ui:Toggle name="optimize-tint" label="Bake material colors" value="true" />
+                        <ui:Toggle name="optimize-lightmap" label="Generate lightmap UVs" value="true" />
+                        <ui:Label text="MATERIALS TO ATLAS" class="alley-field-label" />
+                        <ui:Label name="optimize-list-hint" class="alley-muted"
+                            text="Drop your booth above to list its materials." />
+                        <ui:VisualElement name="optimize-materials-list" />
+                        <ui:Label class="alley-muted"
+                            text="Atlasing keeps the base color only. Untick materials that need normal or metallic maps, transparency, or custom shaders and they ride along unchanged." />
+                        <ui:VisualElement class="alley-shadow alley-shadow-teal">
+                            <ui:Button name="optimize-button" text="OPTIMIZE BOOTH" class="alley-button-primary" />
+                        </ui:VisualElement>
+                        <ui:Label name="optimize-summary" text="" class="alley-body" />
                     </ui:VisualElement>
                 </ui:VisualElement>
             </ui:VisualElement>

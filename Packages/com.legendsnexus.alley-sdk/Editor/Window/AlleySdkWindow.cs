@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
@@ -24,11 +25,21 @@ namespace LegendsNexus.Alley.Editor
         private Dictionary<string, Button> _tabButtons;
         private Dictionary<string, VisualElement> _tabPages;
         private string _currentTab;
-        private static readonly string[] TabOrder = { "signin", "booth", "community", "staff", "settings" };
+        private static readonly string[] TabOrder = { "signin", "booth", "community", "staff", "tools", "settings" };
         private Button _loginButton;
         private Button _loginCancelButton;
         private Button _signOutButton;
         private Button _refreshButton;
+        private ObjectField _optimizeTarget;
+        private SliderInt _optimizeMaterials;
+        private DropdownField _optimizeAtlasSize;
+        private Toggle _optimizeTint;
+        private Toggle _optimizeLightmap;
+        private VisualElement _optimizeList;
+        private Label _optimizeListHint;
+        private Button _optimizeButton;
+        private Label _optimizeSummary;
+        private readonly List<(BoothOptimizer.MaterialEntry entry, Toggle toggle)> _optimizeEntries = new List<(BoothOptimizer.MaterialEntry, Toggle)>();
         private Button _checkButton;
         private Button _uploadButton;
         private DropdownField _eventDropdown;
@@ -176,6 +187,23 @@ namespace LegendsNexus.Alley.Editor
             apiField.RegisterCallback<FocusOutEvent>(_ => AlleyConfig.ApiBase = apiField.value);
             rootVisualElement.Q<Label>("version-label").text = "SDK version " + AlleyConfig.SdkVersion;
 
+            _optimizeTarget = rootVisualElement.Q<ObjectField>("optimize-target");
+            _optimizeMaterials = rootVisualElement.Q<SliderInt>("optimize-materials");
+            _optimizeAtlasSize = rootVisualElement.Q<DropdownField>("optimize-atlas-size");
+            _optimizeTint = rootVisualElement.Q<Toggle>("optimize-tint");
+            _optimizeLightmap = rootVisualElement.Q<Toggle>("optimize-lightmap");
+            _optimizeList = rootVisualElement.Q("optimize-materials-list");
+            _optimizeListHint = rootVisualElement.Q<Label>("optimize-list-hint");
+            _optimizeButton = rootVisualElement.Q<Button>("optimize-button");
+            _optimizeSummary = rootVisualElement.Q<Label>("optimize-summary");
+            _optimizeTarget.objectType = typeof(GameObject);
+            _optimizeTarget.allowSceneObjects = true;
+            _optimizeAtlasSize.choices = new List<string> { "512", "1024", "2048" };
+            _optimizeAtlasSize.value = "2048";
+            _optimizeTarget.RegisterValueChangedCallback(_ => RebuildOptimizeList());
+            _optimizeButton.clicked += StartOptimize;
+            RebuildOptimizeList();
+
             RefreshUi();
             string savedTab = SessionState.GetString("LegendsAlley.Tab", "");
             if (_tabPages.ContainsKey(savedTab) && _tabButtons[savedTab].style.display.value != DisplayStyle.None)
@@ -278,6 +306,82 @@ namespace LegendsNexus.Alley.Editor
             }
         }
 
+        private void RebuildOptimizeList()
+        {
+            _optimizeEntries.Clear();
+            _optimizeList.Clear();
+            _optimizeSummary.text = "";
+
+            var target = _optimizeTarget.value as GameObject;
+            List<BoothOptimizer.MaterialEntry> entries = BoothOptimizer.ScanMaterials(target);
+            _optimizeListHint.style.display = entries.Count == 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            _optimizeListHint.text = target == null
+                ? "Drop your booth above to list its materials."
+                : "No materials found on that object.";
+
+            foreach (BoothOptimizer.MaterialEntry entry in entries)
+            {
+                string shaderName = entry.Material.shader != null ? entry.Material.shader.name : "?";
+                int slash = shaderName.LastIndexOf('/');
+                if (slash >= 0) shaderName = shaderName.Substring(slash + 1);
+                string suffix = entry.IsOpaque ? "" : " (transparent)";
+                var toggle = new Toggle($"{entry.Material.name} \u00b7 {shaderName}{suffix}")
+                {
+                    // transparent mats keep their own shader unless the creator opts in
+                    value = entry.IsOpaque,
+                };
+                _optimizeList.Add(toggle);
+                _optimizeEntries.Add((entry, toggle));
+            }
+        }
+
+        private void StartOptimize()
+        {
+            if (_busy) return;
+            var target = _optimizeTarget.value as GameObject;
+
+            var settings = new BoothOptimizer.Settings
+            {
+                TargetMaterialCount = _optimizeMaterials.value,
+                AtlasSize = int.TryParse(_optimizeAtlasSize.value, out int size) ? size : 2048,
+                BakeTint = _optimizeTint.value,
+                GenerateLightmapUvs = _optimizeLightmap.value,
+            };
+            foreach ((BoothOptimizer.MaterialEntry entry, Toggle toggle) in _optimizeEntries)
+            {
+                if (toggle.value) settings.AtlasMaterials.Add(entry.Material);
+            }
+
+            _busy = true;
+            _optimizeButton.SetEnabled(false);
+            SetTicker(true);
+            SetStatus("Optimizing the booth...");
+            try
+            {
+                BoothOptimizer.Result result = BoothOptimizer.Optimize(target, settings);
+                if (result.Error != null)
+                {
+                    _optimizeSummary.text = result.Error;
+                    SetStatus(result.Error);
+                }
+                else
+                {
+                    _optimizeSummary.text =
+                        $"Done! {result.RenderersBefore} renderers / {result.MaterialsBefore} materials became " +
+                        $"{result.RenderersAfter} renderer{(result.RenderersAfter == 1 ? "" : "s")} / {result.MaterialsAfter} material{(result.MaterialsAfter == 1 ? "" : "s")}. " +
+                        "Your original booth is disabled next to it, delete whichever one you do not want.";
+                    SetStatus("Booth optimized.");
+                    RefreshBooths();
+                }
+            }
+            finally
+            {
+                _busy = false;
+                SetTicker(false);
+                _optimizeButton.SetEnabled(true);
+            }
+        }
+
         private async void StartLogoUpload()
         {
             if (_busy || AlleySession.Community == null) return;
@@ -352,6 +456,7 @@ namespace LegendsNexus.Alley.Editor
             _uploadProgress.style.display = DisplayStyle.None;
 
             bool currentValid = _currentTab == "settings"
+                || _currentTab == "tools"
                 || (_currentTab == "signin" && !signedIn)
                 || (_currentTab == "booth" && hasCommunity)
                 || (_currentTab == "community" && hasCommunity)
@@ -823,7 +928,11 @@ namespace LegendsNexus.Alley.Editor
                 if (!scene.isLoaded) continue;
                 foreach (GameObject rootObject in scene.GetRootGameObjects())
                 {
-                    found.AddRange(rootObject.GetComponentsInChildren<LegendsBooth>(true));
+                    // disabled booths are intentionally hidden (eg. swapping between two builds), skip them
+                    foreach (LegendsBooth booth in rootObject.GetComponentsInChildren<LegendsBooth>(true))
+                    {
+                        if (booth.gameObject.activeInHierarchy) found.Add(booth);
+                    }
                 }
             }
             return found.ToArray();

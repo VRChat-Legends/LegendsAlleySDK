@@ -69,6 +69,21 @@ namespace LegendsNexus.Alley.Editor
 #endif
         }
 
+        // clears probuilder components (and their mesh colliders) off a copy so the
+        // plain filter and renderer can be removed without RequireComponent complaints
+        public static void StripComponents(GameObject root)
+        {
+#if ALLEY_PROBUILDER
+            foreach (ProBuilderMesh pb in root.GetComponentsInChildren<ProBuilderMesh>(true))
+            {
+                if (pb == null) continue;
+                var collider = pb.GetComponent<MeshCollider>();
+                if (collider != null) Object.DestroyImmediate(collider);
+                Object.DestroyImmediate(pb);
+            }
+#endif
+        }
+
 #if ALLEY_PROBUILDER
         private class Piece
         {
