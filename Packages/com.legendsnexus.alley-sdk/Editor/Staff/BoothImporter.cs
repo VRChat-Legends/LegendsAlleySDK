@@ -16,6 +16,7 @@ namespace LegendsNexus.Alley.Editor
     internal static class BoothImporter
     {
         private const string ImportRoot = "Assets/LegendsAlley/Booths";
+        private const string LogoFolder = ImportRoot + "/Logos";
         private const string ExportFolder = "Assets/LegendsAlleyExport";
 
         public static event Action<string> Log = delegate { };
@@ -169,6 +170,7 @@ namespace LegendsNexus.Alley.Editor
 
             Log($"Downloading {work.Count} booth package(s)...");
             string[] packagePaths = await Task.WhenAll(work.Select(w => DownloadSafe(w.booth)));
+            await Task.WhenAll(work.Select(w => DownloadLogoSafe(w.booth)));
 
             for (int i = 0; i < work.Count; i++)
             {
@@ -184,6 +186,7 @@ namespace LegendsNexus.Alley.Editor
                     communityId = booth.communityId,
                     communityName = booth.communityName,
                     communitySlug = booth.communitySlug,
+                    groupId = booth.groupId ?? "",
                     prefabName = SanitizeName(booth.prefabName),
                     sha256 = booth.sha256,
                     version = booth.version,
@@ -217,6 +220,27 @@ namespace LegendsNexus.Alley.Editor
             {
                 Log($"Download failed for {booth.communityName}: {e.Message}");
                 return null;
+            }
+        }
+
+        // community logos feed the directory board. they land on disk before the
+        // batch refresh so they import alongside the booths, and a miss just means
+        // the board shows a lettered disc instead, never a blocked sync
+        private static async Task DownloadLogoSafe(StaffBooth booth)
+        {
+            if (string.IsNullOrEmpty(booth.logoUrl)) return;
+            if (string.IsNullOrEmpty(booth.communityId)
+                || !booth.communityId.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_')) return;
+            try
+            {
+                byte[] bytes = await AlleyHttp.GetBytes($"/api/communities/{booth.communityId}/logo", AlleySession.Token);
+                if (bytes == null || bytes.Length == 0) return;
+                Directory.CreateDirectory(LogoFolder);
+                File.WriteAllBytes(LogoFolder + "/" + booth.communityId + ".png", bytes);
+            }
+            catch (Exception e)
+            {
+                Log($"Could not fetch the logo for {booth.communityName}: {e.Message}");
             }
         }
 
@@ -514,6 +538,7 @@ namespace LegendsNexus.Alley.Editor
 
                 location.placedCommunityId = item.communityId;
                 location.placedCommunityName = item.communityName;
+                location.placedGroupId = item.groupId ?? "";
                 location.placedVersion = item.version;
                 location.placedSha256 = item.sha256;
                 EditorSceneManager.MarkSceneDirty(location.gameObject.scene);
@@ -609,6 +634,7 @@ namespace LegendsNexus.Alley.Editor
             IsRunning = false;
             ImportQueue.Clear();
             RepairNetworkIds();
+            AlleyDirectoryBuilder.RebuildAll(Log);
             Log($"Sync finished. Placed {queue.importedCount}, updated {queue.updatedCount}, skipped {queue.skippedCount} already up to date.");
         }
 

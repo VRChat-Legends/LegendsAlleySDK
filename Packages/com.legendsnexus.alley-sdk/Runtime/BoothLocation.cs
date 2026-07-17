@@ -20,6 +20,7 @@ namespace LegendsNexus.Alley
         [Header("Placed booth (managed by the importer)")]
         public string placedCommunityId = "";
         public string placedCommunityName = "";
+        public string placedGroupId = "";
         public int placedVersion;
         public string placedSha256 = "";
 
@@ -30,6 +31,7 @@ namespace LegendsNexus.Alley
         {
             placedCommunityId = "";
             placedCommunityName = "";
+            placedGroupId = "";
             placedVersion = 0;
             placedSha256 = "";
         }

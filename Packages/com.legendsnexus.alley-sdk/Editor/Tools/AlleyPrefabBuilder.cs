@@ -107,7 +107,7 @@ namespace LegendsNexus.Alley.Editor
 
         // usharp behaviours need a program asset before they can go on objects,
         // and the assembly itself has to be registered with usharp first
-        private static void EnsureProgramAsset()
+        internal static void EnsureProgramAsset()
         {
             string assemblyPath = AlleyConfig.PackageRoot + "/Runtime/LegendsNexus.Alley.Runtime.UdonSharp.asset";
             if (AssetDatabase.LoadAssetAtPath<UdonSharpAssemblyDefinition>(assemblyPath) == null)
@@ -121,6 +121,7 @@ namespace LegendsNexus.Alley.Editor
             EnsureProgram("AlleyGroupButton");
             EnsureProgram("AlleyPedestalInteract");
             EnsureProgram("AlleyVideoPlayer");
+            EnsureProgram("AlleyDirectoryEntry");
         }
 
         private static void EnsureProgram(string className)
