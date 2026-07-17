@@ -64,6 +64,13 @@ namespace LegendsNexus.Alley.Editor
     }
 
     [Serializable]
+    public class TeamMember
+    {
+        public string name;
+        public string discordId;
+    }
+
+    [Serializable]
     public class CommunityInfo
     {
         public string id;
@@ -77,7 +84,7 @@ namespace LegendsNexus.Alley.Editor
         public string ownerUsername;
         public string managerDiscordId;
         public string managerUsername;
-        public string[] teamMembers;
+        public TeamMember[] teamMembers;
         public bool limitsBypass;
     }
 
