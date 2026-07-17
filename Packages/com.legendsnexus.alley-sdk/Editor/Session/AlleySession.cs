@@ -11,6 +11,9 @@ namespace LegendsNexus.Alley.Editor
     {
         public static CommunityInfo Community { get; private set; }
         public static bool IsStaff { get; private set; }
+        // "owner" or "manager", booth managers can upload but not touch the profile
+        public static string Role { get; private set; } = "owner";
+        public static bool IsOwner => Role != "manager";
         public static AlleyEvent[] Events { get; private set; } = Array.Empty<AlleyEvent>();
         public static AlleyEvent SelectedEvent { get; set; }
         public static bool IsSignedIn => !string.IsNullOrEmpty(_token);
@@ -47,6 +50,7 @@ namespace LegendsNexus.Alley.Editor
                 _token = saved.token;
                 Community = saved.community;
                 IsStaff = saved.staff;
+                Role = string.IsNullOrEmpty(saved.role) ? "owner" : saved.role;
             }
             catch
             {
@@ -64,6 +68,7 @@ namespace LegendsNexus.Alley.Editor
                 MeResponse me = await AlleyHttp.GetJson<MeResponse>("/api/auth/me", _token);
                 Community = me.community != null && !string.IsNullOrEmpty(me.community.id) ? me.community : null;
                 IsStaff = me.staff;
+                Role = string.IsNullOrEmpty(me.role) ? "owner" : me.role;
                 Save();
                 await RefreshEvents();
                 Changed?.Invoke();
@@ -82,6 +87,7 @@ namespace LegendsNexus.Alley.Editor
             _token = result.token;
             Community = result.community != null && !string.IsNullOrEmpty(result.community.id) ? result.community : null;
             IsStaff = result.staff;
+            Role = string.IsNullOrEmpty(result.role) ? "owner" : result.role;
             _loaded = true;
             Save();
             await RefreshEvents();
@@ -147,6 +153,7 @@ namespace LegendsNexus.Alley.Editor
             _token = null;
             Community = null;
             IsStaff = false;
+            Role = "owner";
             Events = Array.Empty<AlleyEvent>();
             SelectedEvent = null;
             try
@@ -165,7 +172,7 @@ namespace LegendsNexus.Alley.Editor
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(SessionPath));
-                var file = new SessionFile { token = _token, community = Community, apiBase = AlleyConfig.ApiBase, staff = IsStaff };
+                var file = new SessionFile { token = _token, community = Community, apiBase = AlleyConfig.ApiBase, staff = IsStaff, role = Role };
                 File.WriteAllText(SessionPath, JsonUtility.ToJson(file));
             }
             catch (Exception e)

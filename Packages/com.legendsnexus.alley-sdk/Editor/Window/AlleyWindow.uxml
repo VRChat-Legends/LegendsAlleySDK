@@ -85,6 +85,8 @@
                         <ui:Label text="PROFILE" class="alley-section-label alley-label-purple" />
                         <ui:Label class="alley-body"
                             text="Tell everyone what your community is about. This shows to event staff and on the website." />
+                        <ui:Label name="profile-readonly-hint" class="alley-muted"
+                            text="You are signed in as the booth manager, profile editing is owner only." />
                         <ui:Label text="DESCRIPTION" class="alley-field-label" />
                         <ui:TextField name="community-description" multiline="true" class="alley-description-field" />
                         <ui:Label name="description-count" text="" class="alley-count" />
@@ -92,6 +94,25 @@
                         <ui:TextField name="community-invite" />
                         <ui:VisualElement class="alley-shadow alley-shadow-teal">
                             <ui:Button name="profile-save-button" text="SAVE PROFILE" class="alley-button-secondary" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement class="alley-card-shadow alley-card-shadow-purple">
+                    <ui:VisualElement class="alley-card alley-card-purple">
+                        <ui:Label text="BOOTH TEAM" class="alley-section-label alley-label-purple" />
+                        <ui:Label class="alley-body"
+                            text="A booth manager is one extra Discord account that can sign in here and upload your booth. They cannot edit the profile." />
+                        <ui:Label name="team-owner-line" text="" class="alley-body" />
+                        <ui:Label name="team-manager-line" text="" class="alley-body" />
+                        <ui:VisualElement name="manager-controls">
+                            <ui:Label text="BOOTH MANAGER DISCORD ID" class="alley-field-label" />
+                            <ui:TextField name="manager-id-field" />
+                            <ui:Label class="alley-muted"
+                                text="In Discord: Settings, Advanced, enable Developer Mode, then right click their name and Copy User ID." />
+                            <ui:VisualElement class="alley-shadow alley-shadow-teal">
+                                <ui:Button name="manager-add-button" text="ADD BOOTH MANAGER" class="alley-button-secondary" />
+                            </ui:VisualElement>
+                            <ui:Button name="manager-remove-button" text="REMOVE BOOTH MANAGER" class="alley-button-ghost" />
                         </ui:VisualElement>
                     </ui:VisualElement>
                 </ui:VisualElement>

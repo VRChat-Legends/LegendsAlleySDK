@@ -75,6 +75,8 @@ namespace LegendsNexus.Alley.Editor
         public string groupId;
         public string ownerDiscordId;
         public string ownerUsername;
+        public string managerDiscordId;
+        public string managerUsername;
         public string[] teamMembers;
         public bool limitsBypass;
     }
@@ -85,6 +87,7 @@ namespace LegendsNexus.Alley.Editor
         public string token;
         public CommunityInfo community;
         public bool staff;
+        public string role;
     }
 
     [Serializable]
@@ -92,6 +95,7 @@ namespace LegendsNexus.Alley.Editor
     {
         public CommunityInfo community;
         public bool staff;
+        public string role;
     }
 
     [Serializable]
@@ -106,6 +110,12 @@ namespace LegendsNexus.Alley.Editor
     {
         public string description;
         public string inviteUrl;
+    }
+
+    [Serializable]
+    public class ManagerBody
+    {
+        public string discordId;
     }
 
     [Serializable]
@@ -242,5 +252,6 @@ namespace LegendsNexus.Alley.Editor
         public CommunityInfo community;
         public string apiBase;
         public bool staff;
+        public string role;
     }
 }

@@ -64,6 +64,13 @@ namespace LegendsNexus.Alley.Editor
         private TextField _communityDescription;
         private TextField _communityInvite;
         private Button _profileSaveButton;
+        private Label _profileReadonlyHint;
+        private Label _teamOwnerLine;
+        private Label _teamManagerLine;
+        private VisualElement _managerControls;
+        private TextField _managerIdField;
+        private Button _managerAddButton;
+        private Button _managerRemoveButton;
         private Label _descriptionCount;
         private ScrollView _staffCommunities;
         private Label _staffCommunitiesSummary;
@@ -135,6 +142,13 @@ namespace LegendsNexus.Alley.Editor
             _communityDescription = rootVisualElement.Q<TextField>("community-description");
             _communityInvite = rootVisualElement.Q<TextField>("community-invite");
             _profileSaveButton = rootVisualElement.Q<Button>("profile-save-button");
+            _profileReadonlyHint = rootVisualElement.Q<Label>("profile-readonly-hint");
+            _teamOwnerLine = rootVisualElement.Q<Label>("team-owner-line");
+            _teamManagerLine = rootVisualElement.Q<Label>("team-manager-line");
+            _managerControls = rootVisualElement.Q("manager-controls");
+            _managerIdField = rootVisualElement.Q<TextField>("manager-id-field");
+            _managerAddButton = rootVisualElement.Q<Button>("manager-add-button");
+            _managerRemoveButton = rootVisualElement.Q<Button>("manager-remove-button");
             _descriptionCount = rootVisualElement.Q<Label>("description-count");
             _staffCommunities = rootVisualElement.Q<ScrollView>("staff-communities");
             _staffCommunitiesSummary = rootVisualElement.Q<Label>("staff-communities-summary");
@@ -176,6 +190,8 @@ namespace LegendsNexus.Alley.Editor
             _staffSyncButton.clicked += StartStaffSync;
             _logoButton.clicked += StartLogoUpload;
             _profileSaveButton.clicked += StartProfileSave;
+            _managerAddButton.clicked += StartAddManager;
+            _managerRemoveButton.clicked += StartRemoveManager;
             _placeButton.clicked += StartManualPlace;
             _randomizeButton.clicked += StartRandomize;
             _communityDescription.RegisterValueChangedCallback(evt =>
@@ -483,6 +499,7 @@ namespace LegendsNexus.Alley.Editor
                 _communityDescription.SetValueWithoutNotify(AlleySession.Community?.description ?? "");
                 _communityInvite.SetValueWithoutNotify(AlleySession.Community?.inviteUrl ?? "");
                 _descriptionCount.text = $"{(AlleySession.Community?.description ?? "").Length} / 500";
+                RefreshTeamCard();
                 _ = LoadCommunityLogo();
             }
 
@@ -919,6 +936,99 @@ namespace LegendsNexus.Alley.Editor
                 {
                     SetTicker(false);
                     _profileSaveButton.SetEnabled(true);
+                }
+            }
+        }
+
+        // profile editing and the booth team card follow the signed in role,
+        // managers get a read only view of everything the owner controls
+        private void RefreshTeamCard()
+        {
+            CommunityInfo community = AlleySession.Community;
+            if (community == null) return;
+            bool isOwner = AlleySession.IsOwner;
+
+            _profileReadonlyHint.style.display = isOwner ? DisplayStyle.None : DisplayStyle.Flex;
+            _communityDescription.SetEnabled(isOwner);
+            _communityInvite.SetEnabled(isOwner);
+            _profileSaveButton.SetEnabled(isOwner);
+            _logoButton.SetEnabled(isOwner);
+
+            _teamOwnerLine.text = "Owner: " + (string.IsNullOrEmpty(community.ownerUsername) ? community.ownerDiscordId : community.ownerUsername);
+            bool hasManager = !string.IsNullOrEmpty(community.managerDiscordId);
+            _teamManagerLine.text = hasManager
+                ? "Booth manager: " + (string.IsNullOrEmpty(community.managerUsername)
+                    ? community.managerDiscordId + " (waiting for their first sign in)"
+                    : community.managerUsername)
+                : "Booth manager: none yet";
+
+            _managerControls.style.display = isOwner ? DisplayStyle.Flex : DisplayStyle.None;
+            _managerAddButton.text = hasManager ? "REPLACE BOOTH MANAGER" : "ADD BOOTH MANAGER";
+            _managerRemoveButton.style.display = isOwner && hasManager ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        private async void StartAddManager()
+        {
+            if (_busy || AlleySession.Community == null) return;
+            string discordId = (_managerIdField.value ?? "").Trim();
+            if (!System.Text.RegularExpressions.Regex.IsMatch(discordId, @"^\d{5,25}$"))
+            {
+                SetStatus("Enter their Discord user ID, the long number from Copy User ID in Discord.");
+                return;
+            }
+
+            _busy = true;
+            _managerAddButton.SetEnabled(false);
+            SetTicker(true);
+            SetStatus("Adding booth manager...");
+            try
+            {
+                await AlleyHttp.PutJson<OkResponse>("/api/communities/mine/manager", new ManagerBody { discordId = discordId }, AlleySession.Token);
+                if (this == null) return;
+                _managerIdField.SetValueWithoutNotify("");
+                await AlleySession.Resume();
+                SetStatus("Booth manager added. They can sign in with their own Discord account now.");
+            }
+            catch (AlleyApiException e)
+            {
+                SetStatus(e.Message);
+            }
+            finally
+            {
+                _busy = false;
+                if (this != null)
+                {
+                    SetTicker(false);
+                    _managerAddButton.SetEnabled(true);
+                }
+            }
+        }
+
+        private async void StartRemoveManager()
+        {
+            if (_busy || AlleySession.Community == null) return;
+            _busy = true;
+            _managerRemoveButton.SetEnabled(false);
+            SetTicker(true);
+            SetStatus("Removing booth manager...");
+            try
+            {
+                await AlleyHttp.DeleteJson<OkResponse>("/api/communities/mine/manager", AlleySession.Token);
+                if (this == null) return;
+                await AlleySession.Resume();
+                SetStatus("Booth manager removed. Their access ended immediately.");
+            }
+            catch (AlleyApiException e)
+            {
+                SetStatus(e.Message);
+            }
+            finally
+            {
+                _busy = false;
+                if (this != null)
+                {
+                    SetTicker(false);
+                    _managerRemoveButton.SetEnabled(true);
                 }
             }
         }
