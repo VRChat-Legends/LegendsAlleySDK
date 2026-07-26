@@ -35,6 +35,8 @@ namespace LegendsNexus.Alley.Editor
         public int maxAudioSources;
         public float maxAudioRangeMeters;
         public int maxSlideshowImages;
+        public int maxVideoPlayers;
+        public int maxGroupButtons;
         public int maxEstimatedDrawCalls;
         public int maxEstimatedSetPasses;
         public int maxNonBoxColliders;
@@ -238,6 +240,8 @@ namespace LegendsNexus.Alley.Editor
         public int textComponents;
         public int audioSources;
         public float audioRangeMeters;
+        public int videoPlayers;
+        public int groupButtons;
         public int estimatedDrawCalls;
         public int estimatedSetPasses;
         public int nonBoxColliders;

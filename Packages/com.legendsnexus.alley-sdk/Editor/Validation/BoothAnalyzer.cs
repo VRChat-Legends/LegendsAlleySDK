@@ -19,30 +19,33 @@ namespace LegendsNexus.Alley.Editor
             GameObject root = booth.gameObject;
             ProBuilderBaker.RebuildMeshes(root);
 
-            Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
-            MeshFilter[] meshFilters = root.GetComponentsInChildren<MeshFilter>(true);
-            SkinnedMeshRenderer[] skinned = root.GetComponentsInChildren<SkinnedMeshRenderer>(true);
-            ParticleSystem[] particles = root.GetComponentsInChildren<ParticleSystem>(true);
-            Animator[] animators = root.GetComponentsInChildren<Animator>(true);
-            UdonBehaviour[] udon = root.GetComponentsInChildren<UdonBehaviour>(true);
+            Renderer[] allRenderers = root.GetComponentsInChildren<Renderer>(true);
+            Renderer[] renderers = WithoutKit(allRenderers);
+            MeshFilter[] meshFilters = WithoutKit(root.GetComponentsInChildren<MeshFilter>(true));
+            SkinnedMeshRenderer[] skinned = WithoutKit(root.GetComponentsInChildren<SkinnedMeshRenderer>(true));
+            ParticleSystem[] particles = WithoutKit(root.GetComponentsInChildren<ParticleSystem>(true));
+            Animator[] animators = WithoutKit(root.GetComponentsInChildren<Animator>(true));
+            UdonBehaviour[] udon = WithoutKit(root.GetComponentsInChildren<UdonBehaviour>(true));
             VRCPickup[] pickups = root.GetComponentsInChildren<VRCPickup>(true);
             VRCAvatarPedestal[] pedestals = root.GetComponentsInChildren<VRCAvatarPedestal>(true);
             VRCPortalMarker[] portals = root.GetComponentsInChildren<VRCPortalMarker>(true);
-            AudioSource[] audioSources = root.GetComponentsInChildren<AudioSource>(true);
+            AudioSource[] audioSources = WithoutKit(root.GetComponentsInChildren<AudioSource>(true));
+            AlleyVideoPlayer[] videoPlayers = root.GetComponentsInChildren<AlleyVideoPlayer>(true);
+            AlleyGroupButton[] groupButtons = root.GetComponentsInChildren<AlleyGroupButton>(true);
 
             var textObjects = new List<Component>();
-            textObjects.AddRange(root.GetComponentsInChildren<TMP_Text>(true));
-            textObjects.AddRange(root.GetComponentsInChildren<UnityEngine.UI.Text>(true));
-            textObjects.AddRange(root.GetComponentsInChildren<TextMesh>(true));
+            textObjects.AddRange(WithoutKit(root.GetComponentsInChildren<TMP_Text>(true)));
+            textObjects.AddRange(WithoutKit(root.GetComponentsInChildren<UnityEngine.UI.Text>(true)));
+            textObjects.AddRange(WithoutKit(root.GetComponentsInChildren<TextMesh>(true)));
 
             var oddColliders = new List<Component>();
             foreach (Collider collider in root.GetComponentsInChildren<Collider>(true))
             {
-                if (!(collider is BoxCollider)) oddColliders.Add(collider);
+                if (!(collider is BoxCollider) && !IsKitInternal(collider)) oddColliders.Add(collider);
             }
 
             BoothStatsPayload stats = report.Stats;
-            stats.boundsMeters = MeasureBounds(renderers);
+            stats.boundsMeters = MeasureBounds(allRenderers);
             stats.triangles = CountTriangles(meshFilters, skinned, root);
             stats.staticMeshes = meshFilters.Length;
             stats.skinnedMeshes = skinned.Length;
@@ -57,7 +60,9 @@ namespace LegendsNexus.Alley.Editor
             stats.portals = portals.Length;
             stats.textComponents = textObjects.Count;
             stats.audioSources = audioSources.Length;
-            VRC.SDKBase.VRC_SpatialAudioSource[] spatialAudio = root.GetComponentsInChildren<VRC.SDKBase.VRC_SpatialAudioSource>(true);
+            stats.videoPlayers = videoPlayers.Length;
+            stats.groupButtons = groupButtons.Length;
+            VRC.SDKBase.VRC_SpatialAudioSource[] spatialAudio = WithoutKit(root.GetComponentsInChildren<VRC.SDKBase.VRC_SpatialAudioSource>(true));
             foreach (AudioSource source in audioSources)
             {
                 stats.audioRangeMeters = Mathf.Max(stats.audioRangeMeters, source.maxDistance);
@@ -76,7 +81,7 @@ namespace LegendsNexus.Alley.Editor
             meshComponents.AddRange(skinned);
             var offenders = new Dictionary<string, Object[]>
             {
-                ["Size"] = CollectEdgeRenderers(renderers),
+                ["Size"] = CollectEdgeRenderers(allRenderers),
                 ["Triangles"] = DistinctGameObjects(meshComponents),
                 ["Material slots"] = DistinctGameObjects(renderers),
                 ["Est. draw calls"] = DistinctGameObjects(renderers),
@@ -93,6 +98,8 @@ namespace LegendsNexus.Alley.Editor
                 ["Portals"] = DistinctGameObjects(portals),
                 ["Text components"] = DistinctGameObjects(textObjects),
                 ["Audio sources"] = DistinctGameObjects(audioSources),
+                ["Video players"] = DistinctGameObjects(videoPlayers),
+                ["Group buttons"] = DistinctGameObjects(groupButtons),
                 ["Non-box colliders"] = DistinctGameObjects(oddColliders),
             };
             if (limits != null && limits.maxAudioRangeMeters > 0f)
@@ -153,6 +160,27 @@ namespace LegendsNexus.Alley.Editor
                 if (component != null && seen.Add(component.gameObject)) result.Add(component.gameObject);
             }
             return result.ToArray();
+        }
+
+        // components that ship inside an sdk kit prefab instance (video player,
+        // group button and friends) are counted on their own rows instead of
+        // eating the creator's generic budgets. anything a creator parents under
+        // a kit prefab or adds after unpacking still counts as theirs
+        private static bool IsKitInternal(Component component)
+        {
+            if (PrefabUtility.GetCorrespondingObjectFromSource(component) == null) return false;
+            string path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(component.gameObject);
+            return !string.IsNullOrEmpty(path) && path.StartsWith("Packages/com.legendsnexus.alley-sdk/", System.StringComparison.Ordinal);
+        }
+
+        private static T[] WithoutKit<T>(T[] components) where T : Component
+        {
+            var kept = new List<T>(components.Length);
+            foreach (T component in components)
+            {
+                if (!IsKitInternal(component)) kept.Add(component);
+            }
+            return kept.Count == components.Length ? components : kept.ToArray();
         }
 
         // renderers touching the combined bounds faces, the stuff to look at when
@@ -216,6 +244,7 @@ namespace LegendsNexus.Alley.Editor
             }
             foreach (ParticleSystemRenderer renderer in root.GetComponentsInChildren<ParticleSystemRenderer>(true))
             {
+                if (IsKitInternal(renderer)) continue;
                 if (renderer.renderMode == ParticleSystemRenderMode.Mesh && renderer.mesh != null)
                 {
                     total += CountMeshTriangles(renderer.mesh);
@@ -599,6 +628,8 @@ namespace LegendsNexus.Alley.Editor
             AddGated(report, "Pickups", stats.pickups, limits.maxPickups, limits.allowPickups, limitsBypass);
             AddGated(report, "Avatar pedestals", stats.avatarPedestals, limits.maxAvatarPedestals, limits.allowPedestals, limitsBypass);
             AddGated(report, "Portals", stats.portals, limits.maxPortals, limits.allowPortals, limitsBypass);
+            AddCount(report, "Video players", stats.videoPlayers, limits.maxVideoPlayers, limitsBypass);
+            AddCount(report, "Group buttons", stats.groupButtons, limits.maxGroupButtons, limitsBypass);
             AddCount(report, "Text components", stats.textComponents, limits.maxTextComponents, limitsBypass);
             AddCount(report, "Audio sources", stats.audioSources, limits.maxAudioSources, limitsBypass);
 
