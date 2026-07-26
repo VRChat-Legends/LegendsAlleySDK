@@ -32,7 +32,9 @@ namespace LegendsNexus.Alley.Editor
         private const float CardWidth = 1920f;
         private const float CardHeight = 1080f;
         private const float CardScale = 0.0005f;
-        private const float LogoSize = 470f;
+        // the painted badge circle is 548px across, so 512 leaves a thin white
+        // ring around whatever logo the creator drops in
+        private const float LogoSize = 512f;
         private const float LogoOffsetX = 486f;
         private const float TextOffsetX = -310f;
 
@@ -229,7 +231,6 @@ namespace LegendsNexus.Alley.Editor
                 // off until a creator drops a sprite in, an empty image would
                 // just paint a white square over the badge
                 logo.enabled = false;
-
                 // name on top, action underneath, both clear of the badge
                 TMP_Text nameLabel = AddLabel(card, "Group Name", "YOUR COMMUNITY", new Vector2(980f, 250f), 44f, 132f, Color.white);
                 ((RectTransform)nameLabel.transform).anchoredPosition = new Vector2(TextOffsetX, 92f);

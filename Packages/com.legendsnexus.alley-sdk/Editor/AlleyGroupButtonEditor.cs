@@ -63,13 +63,33 @@ namespace LegendsNexus.Alley.Editor
                 logoField.RegisterValueChangedCallback(evt =>
                 {
                     Undo.RecordObject(button.logoTarget, "Set Group Logo");
-                    button.logoTarget.sprite = (Sprite)evt.newValue;
+                    var sprite = (Sprite)evt.newValue;
+                    button.logoTarget.sprite = sprite;
                     // a null sprite would draw a white square over the badge
-                    button.logoTarget.enabled = evt.newValue != null;
+                    button.logoTarget.enabled = sprite != null;
+                    FitLogo(button.logoTarget, sprite);
                     EditorUtility.SetDirty(button.logoTarget);
                 });
                 card.Add(logoField);
             }
+        }
+
+        // grows the logo until it covers the badge circle instead of sitting
+        // inside it, the circle mask trims whatever hangs over the edge
+        private static void FitLogo(UnityEngine.UI.Image target, Sprite sprite)
+        {
+            var rect = (RectTransform)target.transform;
+            var circle = target.transform.parent as RectTransform;
+            float size = circle != null ? Mathf.Min(circle.rect.width, circle.rect.height) : rect.rect.width;
+
+            if (sprite == null || sprite.rect.height <= 0f)
+            {
+                rect.sizeDelta = new Vector2(size, size);
+                return;
+            }
+
+            float aspect = sprite.rect.width / sprite.rect.height;
+            rect.sizeDelta = new Vector2(size * Mathf.Max(aspect, 1f), size * Mathf.Max(1f / aspect, 1f));
         }
 
         private string CurrentId => (((AlleyGroupButton)target).groupId ?? "").Trim();
