@@ -251,10 +251,12 @@ namespace LegendsNexus.Alley.Editor
             Material teal = FrameMaterial("AlleyBoardTeal", new Color(0.12f, 0.82f, 0.93f), 0.25f);
             Material gold = FrameMaterial("AlleyBoardGold", new Color(1f, 0.84f, 0f), 0.25f);
 
-            FrameCube(root, "Leg L", new Vector3(-1.16f, 0.32f, -0.02f), new Vector3(0.18f, 0.64f, 0.18f), dark);
-            FrameCube(root, "Leg R", new Vector3(1.16f, 0.32f, -0.02f), new Vector3(0.18f, 0.64f, 0.18f), dark);
-            FrameCube(root, "Foot L", new Vector3(-1.16f, 0.03f, -0.02f), new Vector3(0.38f, 0.06f, 0.38f), pink);
-            FrameCube(root, "Foot R", new Vector3(1.16f, 0.03f, -0.02f), new Vector3(0.38f, 0.06f, 0.38f), pink);
+            // legs sit on the panel centre line, same as the big info wall. they
+            // used to sit 0.08 behind it which made the board look bolted on wrong
+            FrameCube(root, "Leg L", new Vector3(-1.06f, 0.32f, 0.06f), new Vector3(0.18f, 0.64f, 0.18f), dark);
+            FrameCube(root, "Leg R", new Vector3(1.06f, 0.32f, 0.06f), new Vector3(0.18f, 0.64f, 0.18f), dark);
+            FrameCube(root, "Foot L", new Vector3(-1.06f, 0.03f, 0.06f), new Vector3(0.38f, 0.06f, 0.38f), pink);
+            FrameCube(root, "Foot R", new Vector3(1.06f, 0.03f, 0.06f), new Vector3(0.38f, 0.06f, 0.38f), pink);
             FrameCube(root, "Panel", new Vector3(0f, 1.55f, 0.06f), new Vector3(2.9f, 1.82f, 0.12f), dark);
             FrameCube(root, "Base Trim", new Vector3(0f, 0.67f, 0.06f), new Vector3(2.98f, 0.05f, 0.14f), pink);
 
