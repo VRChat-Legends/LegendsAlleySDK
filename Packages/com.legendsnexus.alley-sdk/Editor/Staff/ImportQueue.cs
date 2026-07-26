@@ -12,6 +12,7 @@ namespace LegendsNexus.Alley.Editor
         public string communityName;
         public string communitySlug;
         public string groupId;
+        public string description;
         public string prefabName;
         public string sha256;
         public int version;

@@ -21,6 +21,8 @@ namespace LegendsNexus.Alley
         public string placedCommunityId = "";
         public string placedCommunityName = "";
         public string placedGroupId = "";
+        [TextArea(2, 6)]
+        public string placedDescription = "";
         public int placedVersion;
         public string placedSha256 = "";
 
@@ -32,6 +34,7 @@ namespace LegendsNexus.Alley
             placedCommunityId = "";
             placedCommunityName = "";
             placedGroupId = "";
+            placedDescription = "";
             placedVersion = 0;
             placedSha256 = "";
         }

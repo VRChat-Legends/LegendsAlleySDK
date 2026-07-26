@@ -121,6 +121,7 @@ namespace LegendsNexus.Alley.Editor
             EnsureProgram("AlleyGroupButton");
             EnsureProgram("AlleyPedestalInteract");
             EnsureProgram("AlleyVideoPlayer");
+            EnsureProgram("AlleyDirectoryKiosk");
             EnsureProgram("AlleyDirectoryEntry");
         }
 

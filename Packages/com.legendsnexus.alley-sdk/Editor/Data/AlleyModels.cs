@@ -158,6 +158,7 @@ namespace LegendsNexus.Alley.Editor
         public string communityName;
         public string communitySlug;
         public string groupId;
+        public string description;
         public string logoUrl;
         public int version;
         public string status;

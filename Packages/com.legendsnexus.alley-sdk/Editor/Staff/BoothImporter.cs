@@ -187,6 +187,7 @@ namespace LegendsNexus.Alley.Editor
                     communityName = booth.communityName,
                     communitySlug = booth.communitySlug,
                     groupId = booth.groupId ?? "",
+                    description = booth.description ?? "",
                     prefabName = SanitizeName(booth.prefabName),
                     sha256 = booth.sha256,
                     version = booth.version,
@@ -539,6 +540,7 @@ namespace LegendsNexus.Alley.Editor
                 location.placedCommunityId = item.communityId;
                 location.placedCommunityName = item.communityName;
                 location.placedGroupId = item.groupId ?? "";
+                location.placedDescription = item.description ?? "";
                 location.placedVersion = item.version;
                 location.placedSha256 = item.sha256;
                 EditorSceneManager.MarkSceneDirty(location.gameObject.scene);
