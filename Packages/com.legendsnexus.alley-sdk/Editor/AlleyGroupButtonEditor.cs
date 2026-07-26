@@ -34,8 +34,7 @@ namespace LegendsNexus.Alley.Editor
             return root;
         }
 
-        // the art lives on child objects, this saves creators from hunting
-        // through the hierarchy just to put their own name and logo on it
+        // art lives on child objects, this saves hunting through the hierarchy
         private void AddCardArtFields(VisualElement card)
         {
             var button = (AlleyGroupButton)target;
@@ -74,8 +73,7 @@ namespace LegendsNexus.Alley.Editor
             }
         }
 
-        // grows the logo until it covers the badge circle instead of sitting
-        // inside it, the circle mask trims whatever hangs over the edge
+        // cover the circle instead of fitting inside it, the mask trims the rest
         private static void FitLogo(UnityEngine.UI.Image target, Sprite sprite)
         {
             var rect = (RectTransform)target.transform;

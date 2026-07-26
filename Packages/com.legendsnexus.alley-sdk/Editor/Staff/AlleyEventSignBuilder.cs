@@ -11,9 +11,7 @@ using VRC.Udon;
 
 namespace LegendsNexus.Alley.Editor
 {
-    // builds the event info wall that greets people at spawn. same language as
-    // the directory kiosk: flat slab on legs, one accent run across the crown,
-    // and a set of hard edged cards with a solid colour bar for a heading
+    // event info wall for spawn, same look as the directory kiosk
     internal static class AlleyEventSignBuilder
     {
         private static readonly Color32 Pink = new Color32(255, 0, 122, 255);
@@ -33,6 +31,7 @@ namespace LegendsNexus.Alley.Editor
         [MenuItem("GameObject/Legends Alley/Event Info Wall", false, 14)]
         private static void SpawnSign(MenuCommand command)
         {
+            if (AlleyStaffOnly.Blocked("The event info wall")) return;
             AlleyPrefabBuilder.EnsureProgramAsset();
             GameObject sign = Build();
             GameObjectUtility.SetParentAndAlign(sign, command.context as GameObject);
@@ -156,8 +155,7 @@ namespace LegendsNexus.Alley.Editor
             };
             marker.Apply();
 
-            // schedule and crew come down live, so staff can retime the day without
-            // anybody rebuilding the world
+            // schedule and crew come down live so staff can retime without a rebuild
             var feed = (AlleySignFeed)UdonSharpComponentExtensions.AddUdonSharpComponent(root, typeof(AlleySignFeed));
             UdonBehaviour backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(feed);
             backing.SyncMethod = VRC.SDKBase.Networking.SyncType.None;
@@ -179,8 +177,7 @@ namespace LegendsNexus.Alley.Editor
             rect.sizeDelta = size;
             rect.anchoredPosition = position;
 
-            // thin outline showing through behind the fill, tinted from the heading
-            // colour so each card reads as its own block against the wall
+            // thin outline behind the fill, tinted from the heading colour
             Image edge = go.AddComponent<Image>();
             edge.color = Color.Lerp(accent, Color.black, 0.55f);
             edge.raycastTarget = false;

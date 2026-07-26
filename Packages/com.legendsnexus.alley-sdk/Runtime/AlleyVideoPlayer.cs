@@ -89,7 +89,6 @@ namespace LegendsNexus.Alley
             if (!_inRange) return;
 
             // avpro often skips OnVideoPlay on a resume, so watch IsPlaying
-            // instead of waiting for a callback that may never arrive
             if (_resuming)
             {
                 if (videoPlayer.IsPlaying)
@@ -175,9 +174,8 @@ namespace LegendsNexus.Alley
             }
             else if (_paused)
             {
-                // _paused stays set until the tick sees the video actually rolling,
-                // clearing it here would let the state tick call PlayURL again and
-                // reload the whole video instead of resuming
+                // _paused stays set until the tick confirms it, clearing it here
+                // would make the tick call PlayURL and reload the whole video
                 _resuming = true;
                 _resumeDeadline = Time.time + 3f;
                 SetStatus("RESUMING");
@@ -308,8 +306,7 @@ namespace LegendsNexus.Alley
 
         private void RefreshIcons()
         {
-            // flip the icon the moment someone hits resume, waiting for the video
-            // to actually roll makes the button feel dead
+            // flip the icon on press, waiting for the video feels dead
             bool showPause = _playing || _resuming;
             if (playIcon != null) playIcon.SetActive(!showPause);
             if (pauseIcon != null) pauseIcon.SetActive(showPause);

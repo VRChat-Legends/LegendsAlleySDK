@@ -38,6 +38,7 @@ namespace LegendsNexus.Alley.Editor
         [MenuItem("GameObject/Legends Alley/Booth Directory Board", false, 13)]
         private static void SpawnBoard(MenuCommand command)
         {
+            if (AlleyStaffOnly.Blocked("The booth directory board")) return;
             AlleyPrefabBuilder.EnsureProgramAsset();
             GameObject board = BuildBoard();
             GameObjectUtility.SetParentAndAlign(board, command.context as GameObject);
@@ -49,6 +50,7 @@ namespace LegendsNexus.Alley.Editor
         [MenuItem("Tools/Legends Alley/Rebuild Booth Directories")]
         private static void RebuildMenu()
         {
+            if (AlleyStaffOnly.Blocked("The booth directory board")) return;
             RebuildAll(msg => Debug.Log("[LegendsAlley] " + msg));
         }
 
@@ -251,8 +253,7 @@ namespace LegendsNexus.Alley.Editor
             Material teal = FrameMaterial("AlleyBoardTeal", new Color(0.12f, 0.82f, 0.93f), 0.25f);
             Material gold = FrameMaterial("AlleyBoardGold", new Color(1f, 0.84f, 0f), 0.25f);
 
-            // legs sit on the panel centre line, same as the big info wall. they
-            // used to sit 0.08 behind it which made the board look bolted on wrong
+            // legs on the panel centre line, same as the big info wall
             FrameCube(root, "Leg L", new Vector3(-1.06f, 0.32f, 0.06f), new Vector3(0.18f, 0.64f, 0.18f), dark);
             FrameCube(root, "Leg R", new Vector3(1.06f, 0.32f, 0.06f), new Vector3(0.18f, 0.64f, 0.18f), dark);
             FrameCube(root, "Foot L", new Vector3(-1.06f, 0.03f, 0.06f), new Vector3(0.38f, 0.06f, 0.38f), pink);

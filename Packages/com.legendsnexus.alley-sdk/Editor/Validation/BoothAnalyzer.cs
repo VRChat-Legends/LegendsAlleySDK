@@ -487,6 +487,12 @@ namespace LegendsNexus.Alley.Editor
                 report.Blockers.Add($"Remove {directional} directional light{(directional > 1 ? "s" : "")}, they affect the whole event world.");
             }
 
+            string staffOnly = AlleyStaffOnly.Find(root);
+            if (staffOnly != null)
+            {
+                report.Blockers.Add($"Remove the {staffOnly} component, the directory boards and info walls are placed by staff as part of the event world.");
+            }
+
             // every compiled udon program gets read and its calls checked against
             // the event whitelist, kit scripts and hand written ones alike
             foreach (UdonBehaviour udon in root.GetComponentsInChildren<UdonBehaviour>(true))

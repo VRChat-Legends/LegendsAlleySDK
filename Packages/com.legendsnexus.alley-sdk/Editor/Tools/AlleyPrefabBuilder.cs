@@ -33,14 +33,11 @@ namespace LegendsNexus.Alley.Editor
         private static readonly Color32 TextDim = new Color32(154, 160, 166, 255);
         private static readonly Color32 LabelIdle = new Color32(214, 217, 222, 255);
 
-        // sketch's join group art is three 1920x1080 layers sharing one canvas,
-        // so everything below is in that pixel space. 0.0005 lands the card at
-        // 0.96m wide which reads well from across a booth
+        // sketch's art is 1920x1080 layers, 0.0005 puts the card at 0.96m wide
         private const float CardWidth = 1920f;
         private const float CardHeight = 1080f;
         private const float CardScale = 0.0005f;
-        // the painted badge circle is 548px across, so 512 leaves a thin white
-        // ring around whatever logo the creator drops in
+        // badge circle is 548px across so 512 leaves a thin white ring
         private const float LogoSize = 512f;
         private const float LogoOffsetX = 486f;
         private const float TextOffsetX = -310f;
@@ -206,8 +203,7 @@ namespace LegendsNexus.Alley.Editor
             var root = new GameObject("Alley Group Button");
             try
             {
-                // matches the painted plate, not the full art canvas, so the
-                // press box lines up with what people actually see
+                // the plate, not the whole art canvas, so the press box matches
                 var collider = root.AddComponent<BoxCollider>();
                 collider.isTrigger = true;
                 collider.size = new Vector3(CardWidth * CardScale, 708f * CardScale, 0.06f);
@@ -220,14 +216,12 @@ namespace LegendsNexus.Alley.Editor
 
                 Transform card = MakeWorldCanvas(root.transform, "Card", new Vector2(CardWidth, CardHeight), CardScale, Vector3.zero);
 
-                // sketch drew the three layers on one shared canvas, so they all
-                // stack at full size with no offsets to fiddle with
+                // sketch drew the three layers on one shared canvas, so they stack
                 AddImage(card, "Back Plate", EnsureCardSprite("AlleyGroupCardBack"), Color.white, new Vector2(CardWidth, CardHeight));
                 AddImage(card, "Front Plate", EnsureCardSprite("AlleyGroupCardFront"), Color.white, new Vector2(CardWidth, CardHeight));
                 AddImage(card, "Badge", EnsureCardSprite("AlleyGroupCardBadge"), Color.white, new Vector2(CardWidth, CardHeight));
 
-                // the badge circle sits right of centre in sketch's art. a mask
-                // keeps square logos from spilling out over the magenta
+                // mask keeps square logos from spilling out of the badge circle
                 var maskGo = new GameObject("Logo", typeof(RectTransform));
                 maskGo.transform.SetParent(card, false);
                 var maskRect = (RectTransform)maskGo.transform;
@@ -240,8 +234,7 @@ namespace LegendsNexus.Alley.Editor
 
                 Image logo = AddImage(maskGo.transform, "Group Logo", null, Color.white, new Vector2(LogoSize, LogoSize));
                 logo.preserveAspect = true;
-                // off until a creator drops a sprite in, an empty image would
-                // just paint a white square over the badge
+                // off until someone drops a sprite in, empty images paint white
                 logo.enabled = false;
                 // name on top, action underneath, both clear of the badge
                 TMP_Text nameLabel = AddLabel(card, "Group Name", "YOUR COMMUNITY", new Vector2(980f, 250f), 44f, 132f, Color.white);
@@ -360,8 +353,7 @@ namespace LegendsNexus.Alley.Editor
                 bar.gameObject.AddComponent<GraphicRaycaster>();
                 bar.gameObject.AddComponent<VRCUiShape>();
 
-                // hairline edge with the card sitting inside it, same trick the
-                // event sign uses to fake a border without an outline component
+                // hairline edge with the card inside it, cheaper than an outline
                 AddImage(bar, "Edge", null, Line, new Vector2(BarWidth, BarHeight));
                 AddImage(bar, "Fill", null, CardFill, new Vector2(BarInner, BarHeight - 8f));
                 AddAccentRun(bar, BarInner, 6f, (BarHeight - 8f) * 0.5f - 3f);

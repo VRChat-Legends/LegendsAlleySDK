@@ -18,8 +18,7 @@ namespace LegendsNexus.Alley
         [Tooltip("Your VRChat group ID, looks like grp_12345678-1234-1234-1234-123456789abc")]
         public string groupId = "";
 
-        // wired by the prefab so the inspector can edit the card art without
-        // making creators dig through the hierarchy. nothing reads these ingame
+        // wired by the prefab so the inspector can edit the card art
         [HideInInspector] public TextMeshProUGUI nameLabel;
         [HideInInspector] public Image logoTarget;
 

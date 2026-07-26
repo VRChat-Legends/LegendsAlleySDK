@@ -7,10 +7,9 @@ using VRC.Udon.Common.Interfaces;
 
 namespace LegendsNexus.Alley
 {
-    // pulls the event schedule and crew list off the alley site while people
-    // are standing in front of the wall, so staff can fix a time or add a name
-    // without anyone rebuilding the world. the schedule download carries the
-    // event name on its first line, which lands in the chip up top
+    // pulls the schedule and crew list off the alley site so staff can retime a
+    // day without anyone rebuilding the world. first line of the schedule file is
+    // the event name
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     [DisallowMultipleComponent]
     public class AlleySignFeed : UdonSharpBehaviour
