@@ -3,7 +3,7 @@ using UnityEngine;
 namespace LegendsNexus.Alley
 {
     // marker for the booth directory kiosk in event maps. the editor side
-    // builder finds boards through this and refills their exhibitor list after
+    // builder finds boards through this and refills their legend list after
     // every sync. carries no runtime logic, vrchat strips it at build time
     // the same way it does BoothLocation
     [DisallowMultipleComponent]

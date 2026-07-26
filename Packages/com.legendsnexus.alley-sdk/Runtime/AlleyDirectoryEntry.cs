@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace LegendsNexus.Alley
 {
-    // one of these sits on every row of the exhibitor list. clicking the row
+    // one of these sits on every row of the legend list. clicking the row
     // hands its index to the kiosk, which fills the detail panel next to it.
     // everything is local, no sync, so any number of people can browse at once
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]

@@ -7,7 +7,7 @@ using VRC.SDKBase;
 
 namespace LegendsNexus.Alley
 {
-    // the brain behind the booth directory kiosk. the exhibitor list on the
+    // the brain behind the booth directory kiosk. the legend list on the
     // left fills the detail panel on the right, and the two buttons act on
     // whatever is selected. everything is local, no sync, so a crowd can all
     // browse different booths on the same board at once

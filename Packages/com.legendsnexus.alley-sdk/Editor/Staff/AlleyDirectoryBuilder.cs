@@ -132,7 +132,7 @@ namespace LegendsNexus.Alley.Editor
             return trimmed.Length <= 700 ? trimmed : trimmed.Substring(0, 697).TrimEnd() + "...";
         }
 
-        /* ─── exhibitor rows ─── */
+        /* ─── legend rows ─── */
 
         // teleport anchor out in the aisle, facing back at the booth
         private static Transform AddAnchor(AlleyDirectoryBoard board, BoothLocation plot)
@@ -343,7 +343,7 @@ namespace LegendsNexus.Alley.Editor
 
         private static RectTransform BuildListPanel(Transform canvas, AlleyDirectoryBoard marker)
         {
-            var panel = new GameObject("Exhibitors", typeof(RectTransform));
+            var panel = new GameObject("Legends", typeof(RectTransform));
             panel.transform.SetParent(canvas, false);
             var panelRect = (RectTransform)panel.transform;
             panelRect.sizeDelta = new Vector2(1040f, 1064f);
@@ -355,7 +355,7 @@ namespace LegendsNexus.Alley.Editor
             Image head = Block(panel.transform, "Head", Bar, new Vector2(1040f, 70f));
             Pin((RectTransform)head.transform, new Vector2(0.5f, 1f), new Vector2(0f, -35f));
 
-            TMP_Text heading = Label(panel.transform, "Heading", "EXHIBITORS", new Vector2(600f, 44f), 20f, 28f, Color.white);
+            TMP_Text heading = Label(panel.transform, "Heading", "LEGENDS", new Vector2(600f, 44f), 20f, 28f, Color.white);
             heading.alignment = TextAlignmentOptions.Left;
             heading.characterSpacing = 12f;
             Pin((RectTransform)heading.transform, new Vector2(0f, 1f), new Vector2(354f, -35f));
@@ -459,7 +459,7 @@ namespace LegendsNexus.Alley.Editor
             placeholder.transform.SetParent(panel.transform, false);
             Stretch((RectTransform)placeholder.transform);
             TMP_Text prompt = Label(placeholder.transform, "Prompt",
-                "SELECT AN EXHIBITOR\n<size=60%><color=#9AA0A6>their story and a warp button show up here</color></size>",
+                "SELECT A LEGEND\n<size=60%><color=#9AA0A6>their story and a warp button show up here</color></size>",
                 new Vector2(900f, 260f), 26f, 34f, TextDim);
             prompt.characterSpacing = 8f;
 
