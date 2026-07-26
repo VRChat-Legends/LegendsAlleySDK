@@ -43,6 +43,8 @@ namespace LegendsNexus.Alley
         private bool _playing;
         private bool _paused;
         private bool _ended;
+        private bool _resuming;
+        private float _resumeDeadline;
         private float _nextCheck;
         private float _nextAttempt;
         private float _loadStarted;
@@ -86,6 +88,29 @@ namespace LegendsNexus.Alley
 
             if (!_inRange) return;
 
+            // avpro often skips OnVideoPlay on a resume, so watch IsPlaying
+            // instead of waiting for a callback that may never arrive
+            if (_resuming)
+            {
+                if (videoPlayer.IsPlaying)
+                {
+                    _resuming = false;
+                    _paused = false;
+                    _playing = true;
+                    SetStatus("NOW PLAYING");
+                    RefreshIcons();
+                }
+                else if (Time.time > _resumeDeadline)
+                {
+                    // resume never took, load it again from the top
+                    _resuming = false;
+                    _paused = false;
+                    _ended = false;
+                    StartVideo();
+                }
+                return;
+            }
+
             // a load that never comes back counts as failed
             if (_loading && Time.time > _loadStarted + 20f)
             {
@@ -115,6 +140,7 @@ namespace LegendsNexus.Alley
             _playing = false;
             _paused = false;
             _ended = false;
+            _resuming = false;
             SetStatus(status);
             RefreshIcons();
         }
@@ -123,6 +149,7 @@ namespace LegendsNexus.Alley
         {
             // jitter keeps multiple players from retrying in lockstep
             _nextAttempt = Time.time + baseDelay + Random.Range(0f, 3f);
+            _resuming = false;
             SetStatus(status);
             RefreshIcons();
         }
@@ -141,16 +168,20 @@ namespace LegendsNexus.Alley
             {
                 _paused = true;
                 _playing = false;
+                _resuming = false;
                 videoPlayer.Pause();
                 SetStatus("PAUSED");
                 RefreshIcons();
             }
             else if (_paused)
             {
-                // the flag stays set until OnVideoPlay confirms the resume. clearing
-                // it here lets the state tick see "stopped" and issue a fresh
-                // PlayURL, which reloads the whole video instead of resuming
+                // _paused stays set until the tick sees the video actually rolling,
+                // clearing it here would let the state tick call PlayURL again and
+                // reload the whole video instead of resuming
+                _resuming = true;
+                _resumeDeadline = Time.time + 3f;
                 SetStatus("RESUMING");
+                RefreshIcons();
                 videoPlayer.Play();
             }
             else if (!_loading)
@@ -190,6 +221,7 @@ namespace LegendsNexus.Alley
             _loading = false;
             _playing = true;
             _paused = false;
+            _resuming = false;
             SetStatus("NOW PLAYING");
             RefreshIcons();
         }
@@ -199,6 +231,7 @@ namespace LegendsNexus.Alley
             _loading = false;
             _playing = true;
             _paused = false;
+            _resuming = false;
             SetStatus("NOW PLAYING");
             RefreshIcons();
         }
@@ -207,6 +240,7 @@ namespace LegendsNexus.Alley
         {
             _playing = false;
             _paused = true;
+            _resuming = false;
             SetStatus("PAUSED");
             RefreshIcons();
         }
@@ -240,6 +274,7 @@ namespace LegendsNexus.Alley
         {
             _loading = false;
             _playing = false;
+            _paused = false;
             if (videoError == VideoError.RateLimited)
             {
                 // another player just loaded something, wait our turn
@@ -273,8 +308,11 @@ namespace LegendsNexus.Alley
 
         private void RefreshIcons()
         {
-            if (playIcon != null) playIcon.SetActive(!_playing);
-            if (pauseIcon != null) pauseIcon.SetActive(_playing);
+            // flip the icon the moment someone hits resume, waiting for the video
+            // to actually roll makes the button feel dead
+            bool showPause = _playing || _resuming;
+            if (playIcon != null) playIcon.SetActive(!showPause);
+            if (pauseIcon != null) pauseIcon.SetActive(showPause);
         }
     }
 }
