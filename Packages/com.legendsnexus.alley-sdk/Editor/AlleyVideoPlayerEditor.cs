@@ -34,10 +34,27 @@ namespace LegendsNexus.Alley.Editor
             loopToggle.BindProperty(serializedObject.FindProperty(nameof(AlleyVideoPlayer.loop)));
             card.Add(loopToggle);
 
+            var idleField = new ObjectField("Screen image")
+            {
+                objectType = typeof(Texture),
+                allowSceneObjects = false,
+            };
+            idleField.BindProperty(serializedObject.FindProperty(nameof(AlleyVideoPlayer.idleImage)));
+            card.Add(idleField);
+
+            var thumb = new Image { scaleMode = ScaleMode.ScaleToFit };
+            thumb.style.height = 132;
+            thumb.style.marginTop = 4;
+            thumb.style.marginBottom = 6;
+            card.Add(thumb);
+            idleField.RegisterValueChangedCallback(_ => PaintThumb(thumb));
+            PaintThumb(thumb);
+
             Label status = AlleyInspectorKit.MakeStatus(card);
             urlField.RegisterValueChangedCallback(_ => UpdateStatus(status));
             playRange.RegisterValueChangedCallback(_ => UpdateStatus(status));
             audioReach.RegisterValueChangedCallback(_ => { SyncAudio(); UpdateStatus(status); });
+            idleField.RegisterValueChangedCallback(_ => UpdateStatus(status));
             SyncAudio();
             UpdateStatus(status);
 
@@ -51,6 +68,15 @@ namespace LegendsNexus.Alley.Editor
         private AlleyVideoPlayer Player => (AlleyVideoPlayer)target;
 
         private string CurrentUrl => Player.videoUrl != null ? (Player.videoUrl.Get() ?? "").Trim() : "";
+
+        // shows the packaged plate when nobody picked their own
+        private void PaintThumb(Image thumb)
+        {
+            Texture picked = Player.idleImage;
+            thumb.image = picked != null
+                ? picked
+                : AssetDatabase.LoadAssetAtPath<Texture2D>(AlleyConfig.PackageRoot + "/Runtime/Textures/AlleyVideoFallback.png");
+        }
 
         // the audio child carries the real falloff settings, keep them matched
         // to the slider so what you see in the scene is what ships
@@ -91,8 +117,9 @@ namespace LegendsNexus.Alley.Editor
             }
             else
             {
+                string screen = Player.idleImage != null ? "your screen image" : "the Legends Alley plate";
                 AlleyInspectorKit.SetStatus(status,
-                    $"People within {Player.playbackRange:0.#}m see it start on its own and get a play, pause, and volume bar. Sound never carries past {Mathf.Clamp(Player.audioRange, 1f, 5f):0.#}m.",
+                    $"People within {Player.playbackRange:0.#}m see it start on its own and get a play, pause, and volume bar. Sound never carries past {Mathf.Clamp(Player.audioRange, 1f, 5f):0.#}m. While it is off the screen shows {screen}.",
                     null);
             }
         }
