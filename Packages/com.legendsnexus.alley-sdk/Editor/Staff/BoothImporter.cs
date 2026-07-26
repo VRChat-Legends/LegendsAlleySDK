@@ -320,12 +320,27 @@ namespace LegendsNexus.Alley.Editor
 
                 string relative = entry.Pathname.StartsWith(exportPrefix, StringComparison.Ordinal)
                     ? entry.Pathname.Substring(exportPrefix.Length)
-                    : "deps/" + entry.Pathname.Substring("Assets/".Length);
+                    : "deps/" + CollapseImportedPath(entry.Pathname.Substring("Assets/".Length));
                 string finalPath = targetFolder + "/" + relative;
                 Directory.CreateDirectory(Path.GetDirectoryName(finalPath));
                 File.WriteAllBytes(finalPath, entry.Asset);
                 if (entry.Meta != null) File.WriteAllBytes(finalPath + ".meta", entry.Meta);
             }
+        }
+
+        // booths re-uploaded from the staff project carry their already imported
+        // deps paths, which used to nest deps/LegendsAlley/Booths one deeper per cycle
+        private static string CollapseImportedPath(string path)
+        {
+            const string prefix = "LegendsAlley/Booths/";
+            while (path.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                int slash = path.IndexOf('/', prefix.Length);
+                if (slash < 0) break;
+                path = path.Substring(slash + 1);
+                if (path.StartsWith("deps/", StringComparison.Ordinal)) path = path.Substring(5);
+            }
+            return path;
         }
 
         // minimal tar.gz reader for the unitypackage layout: {guid}/asset,
