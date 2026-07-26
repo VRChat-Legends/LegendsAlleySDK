@@ -23,7 +23,18 @@ namespace LegendsNexus.Alley.Editor
 
         private static readonly Color32 Pink = new Color32(255, 0, 122, 255);
         private static readonly Color32 Purple = new Color32(107, 70, 193, 255);
+        private static readonly Color32 Magenta = new Color32(186, 24, 156, 255);
         private static readonly Color32 CardDark = new Color32(16, 18, 22, 250);
+
+        // sketch's join group art is three 1920x1080 layers sharing one canvas,
+        // so everything below is in that pixel space. 0.0005 lands the card at
+        // 0.96m wide which reads well from across a booth
+        private const float CardWidth = 1920f;
+        private const float CardHeight = 1080f;
+        private const float CardScale = 0.0005f;
+        private const float LogoSize = 470f;
+        private const float LogoOffsetX = 486f;
+        private const float TextOffsetX = -310f;
 
         // measured ingame: the client draws the avatar picture as a rounded
         // square about 1.68m wide centered 1.35m above the placement transform.
@@ -88,7 +99,7 @@ namespace LegendsNexus.Alley.Editor
             Sprite rounded = EnsureShapeSprite("AlleyRounded", 64, RoundedSpriteDistance, new Vector4(24f, 24f, 24f, 24f));
             Sprite play = EnsureShapeSprite("AlleyPlayIcon", 64, PlayIconDistance, Vector4.zero);
             Sprite pause = EnsureShapeSprite("AlleyPauseIcon", 64, PauseIconDistance, Vector4.zero);
-            BuildGroupButton(disc, ring);
+            BuildGroupButton(disc, rounded);
             BuildAvatarPedestal();
             BuildVideoPlayer(disc, ring, rounded, play, pause);
             AssetDatabase.SaveAssets();
@@ -123,6 +134,7 @@ namespace LegendsNexus.Alley.Editor
             EnsureProgram("AlleyVideoPlayer");
             EnsureProgram("AlleyDirectoryKiosk");
             EnsureProgram("AlleyDirectoryEntry");
+            EnsureProgram("AlleySignFeed");
         }
 
         private static void EnsureProgram(string className)
@@ -175,25 +187,65 @@ namespace LegendsNexus.Alley.Editor
             return AssetDatabase.LoadAssetAtPath<Sprite>(path);
         }
 
-        private static void BuildGroupButton(Sprite disc, Sprite ring)
+        private static void BuildGroupButton(Sprite disc, Sprite rounded)
         {
             var root = new GameObject("Alley Group Button");
             try
             {
+                // matches the painted plate, not the full art canvas, so the
+                // press box lines up with what people actually see
                 var collider = root.AddComponent<BoxCollider>();
                 collider.isTrigger = true;
-                collider.size = new Vector3(0.42f, 0.42f, 0.08f);
+                collider.size = new Vector3(CardWidth * CardScale, 708f * CardScale, 0.06f);
 
                 var proxy = (AlleyGroupButton)UdonSharpComponentExtensions.AddUdonSharpComponent(root, typeof(AlleyGroupButton));
                 UdonBehaviour backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(proxy);
-                backing.interactText = "Visit Group";
+                backing.interactText = "Join Group";
                 backing.proximity = 3f;
                 backing.SyncMethod = VRC.SDKBase.Networking.SyncType.None;
 
-                Transform face = MakeWorldCanvas(root.transform, "Button Face", new Vector2(512f, 512f), 0.00082f, Vector3.zero);
-                AddImage(face, "Ring", ring, Pink, new Vector2(512f, 512f));
-                AddImage(face, "Disc", disc, CardDark, new Vector2(470f, 470f));
-                AddLabel(face, "Label", "VISIT GROUP", new Vector2(320f, 250f), 40f, 96f, Color.white);
+                Transform card = MakeWorldCanvas(root.transform, "Card", new Vector2(CardWidth, CardHeight), CardScale, Vector3.zero);
+
+                // sketch drew the three layers on one shared canvas, so they all
+                // stack at full size with no offsets to fiddle with
+                AddImage(card, "Back Plate", EnsureCardSprite("AlleyGroupCardBack"), Color.white, new Vector2(CardWidth, CardHeight));
+                AddImage(card, "Front Plate", EnsureCardSprite("AlleyGroupCardFront"), Color.white, new Vector2(CardWidth, CardHeight));
+                AddImage(card, "Badge", EnsureCardSprite("AlleyGroupCardBadge"), Color.white, new Vector2(CardWidth, CardHeight));
+
+                // the badge circle sits right of centre in sketch's art. a mask
+                // keeps square logos from spilling out over the magenta
+                var maskGo = new GameObject("Logo", typeof(RectTransform));
+                maskGo.transform.SetParent(card, false);
+                var maskRect = (RectTransform)maskGo.transform;
+                maskRect.sizeDelta = new Vector2(LogoSize, LogoSize);
+                maskRect.anchoredPosition = new Vector2(LogoOffsetX, 0f);
+                var maskImage = maskGo.AddComponent<Image>();
+                maskImage.sprite = disc;
+                maskImage.raycastTarget = false;
+                maskGo.AddComponent<Mask>().showMaskGraphic = false;
+
+                Image logo = AddImage(maskGo.transform, "Group Logo", null, Color.white, new Vector2(LogoSize, LogoSize));
+                logo.preserveAspect = true;
+                // off until a creator drops a sprite in, an empty image would
+                // just paint a white square over the badge
+                logo.enabled = false;
+
+                // name on top, action underneath, both clear of the badge
+                TMP_Text nameLabel = AddLabel(card, "Group Name", "YOUR COMMUNITY", new Vector2(980f, 250f), 44f, 132f, Color.white);
+                ((RectTransform)nameLabel.transform).anchoredPosition = new Vector2(TextOffsetX, 92f);
+                nameLabel.characterSpacing = 0f;
+
+                Image chip = AddImage(card, "Action Chip", rounded, Color.white, new Vector2(700f, 140f));
+                chip.type = Image.Type.Sliced;
+                chip.pixelsPerUnitMultiplier = 0.5f;
+                chip.rectTransform.anchoredPosition = new Vector2(TextOffsetX, -162f);
+                TMP_Text action = AddLabel(card, "Action Label", "JOIN GROUP", new Vector2(580f, 110f), 32f, 58f, Magenta);
+                ((RectTransform)action.transform).anchoredPosition = new Vector2(TextOffsetX, -162f);
+                action.characterSpacing = 10f;
+
+                proxy.nameLabel = (TextMeshProUGUI)nameLabel;
+                proxy.logoTarget = logo;
+                UdonSharpEditorUtility.CopyProxyToUdon(proxy);
 
                 SavePrefab(root, "Alley Group Button");
             }
@@ -201,6 +253,33 @@ namespace LegendsNexus.Alley.Editor
             {
                 Object.DestroyImmediate(root);
             }
+        }
+
+        // the layer art ships as plain pngs, first build flips them to sprites
+        private static Sprite EnsureCardSprite(string name)
+        {
+            string path = TextureFolder + "/" + name + ".png";
+            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (importer == null)
+            {
+                Debug.LogError("[LegendsAlley] Missing card art " + name);
+                return null;
+            }
+
+            if (importer.textureType != TextureImporterType.Sprite)
+            {
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.alphaIsTransparency = true;
+                importer.mipmapEnabled = true;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.filterMode = FilterMode.Trilinear;
+                importer.maxTextureSize = 2048;
+                importer.textureCompression = TextureImporterCompression.Compressed;
+                importer.SaveAndReimport();
+            }
+
+            return AssetDatabase.LoadAssetAtPath<Sprite>(path);
         }
 
         // proximity driven booth video player: avpro engine so youtube links and

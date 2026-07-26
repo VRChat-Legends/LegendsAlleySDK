@@ -1,9 +1,13 @@
 using TMPro;
+using UdonSharp;
+using UdonSharpEditor;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UI;
 using VRC.SDK3.Components;
+using VRC.SDKBase;
+using VRC.Udon;
 
 namespace LegendsNexus.Alley.Editor
 {
@@ -29,6 +33,7 @@ namespace LegendsNexus.Alley.Editor
         [MenuItem("GameObject/Legends Alley/Event Info Wall", false, 14)]
         private static void SpawnSign(MenuCommand command)
         {
+            AlleyPrefabBuilder.EnsureProgramAsset();
             GameObject sign = Build();
             GameObjectUtility.SetParentAndAlign(sign, command.context as GameObject);
             Undo.RegisterCreatedObjectUndo(sign, "Create Event Info Wall");
@@ -143,13 +148,25 @@ namespace LegendsNexus.Alley.Editor
                 new AlleySignPanel
                 {
                     heading = "Event Schedule",
-                    body = "Doors open, times go here.\n\nSelect this wall and fill in the Event Sign component to set the schedule.",
+                    body = "Loading the schedule from the alley site.",
                 },
                 new AlleySignPanel { heading = "Partners", body = "Everyone helping put the event on." },
                 new AlleySignPanel { heading = "Sponsors", body = "Anyone backing the event." },
-                new AlleySignPanel { heading = "Event Crew", body = "The people running the show." },
+                new AlleySignPanel { heading = "Event Crew", body = "Loading the crew list from the alley site." },
             };
             marker.Apply();
+
+            // schedule and crew come down live, so staff can retime the day without
+            // anybody rebuilding the world
+            var feed = (AlleySignFeed)UdonSharpComponentExtensions.AddUdonSharpComponent(root, typeof(AlleySignFeed));
+            UdonBehaviour backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(feed);
+            backing.SyncMethod = VRC.SDKBase.Networking.SyncType.None;
+            feed.scheduleUrl = new VRCUrl(AlleyConfig.DefaultApiBase + "/api/public/sign/current/schedule.txt");
+            feed.crewUrl = new VRCUrl(AlleyConfig.DefaultApiBase + "/api/public/sign/current/crew.txt");
+            feed.eventNameLabel = (TextMeshProUGUI)subtitle;
+            feed.scheduleLabel = (TextMeshProUGUI)bodies[0];
+            feed.crewLabel = (TextMeshProUGUI)bodies[3];
+            UdonSharpEditorUtility.CopyProxyToUdon(feed);
         }
 
         // one card: solid colour heading bar, flat body underneath

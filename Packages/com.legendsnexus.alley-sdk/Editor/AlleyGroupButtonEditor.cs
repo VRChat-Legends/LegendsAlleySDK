@@ -29,7 +29,47 @@ namespace LegendsNexus.Alley.Editor
             test.AddToClassList("alley-insp-button-ghost");
             card.Add(test);
 
+            AddCardArtFields(card);
+
             return root;
+        }
+
+        // the art lives on child objects, this saves creators from hunting
+        // through the hierarchy just to put their own name and logo on it
+        private void AddCardArtFields(VisualElement card)
+        {
+            var button = (AlleyGroupButton)target;
+
+            if (button.nameLabel != null)
+            {
+                var nameField = new TextField("Community Name") { value = button.nameLabel.text };
+                nameField.RegisterValueChangedCallback(evt =>
+                {
+                    Undo.RecordObject(button.nameLabel, "Set Community Name");
+                    button.nameLabel.text = evt.newValue;
+                    EditorUtility.SetDirty(button.nameLabel);
+                });
+                card.Add(nameField);
+            }
+
+            if (button.logoTarget != null)
+            {
+                var logoField = new ObjectField("Group Logo")
+                {
+                    objectType = typeof(Sprite),
+                    allowSceneObjects = false,
+                    value = button.logoTarget.sprite,
+                };
+                logoField.RegisterValueChangedCallback(evt =>
+                {
+                    Undo.RecordObject(button.logoTarget, "Set Group Logo");
+                    button.logoTarget.sprite = (Sprite)evt.newValue;
+                    // a null sprite would draw a white square over the badge
+                    button.logoTarget.enabled = evt.newValue != null;
+                    EditorUtility.SetDirty(button.logoTarget);
+                });
+                card.Add(logoField);
+            }
         }
 
         private string CurrentId => (((AlleyGroupButton)target).groupId ?? "").Trim();
