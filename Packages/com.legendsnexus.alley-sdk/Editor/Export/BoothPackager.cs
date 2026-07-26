@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using UnityEditor;
@@ -7,7 +8,7 @@ using UnityEngine;
 namespace LegendsNexus.Alley.Editor
 {
     // builds the upload zip: a prepared prefab exported as a unitypackage,
-    // the metadata json, and a camera snapshot as the preview image
+    // the metadata json, and a framed preview render of the booth
     internal static class BoothPackager
     {
         private const string ExportFolder = "Assets/LegendsAlleyExport";
@@ -27,10 +28,6 @@ namespace LegendsNexus.Alley.Editor
                 // fork probuilder meshes right away, the copy shares them with the
                 // scene booth until then and destroying it would take them along
                 ProBuilderBaker.MakeMeshesUnique(duplicate);
-                // remember how the scene camera frames the booth before the copy
-                // moves, creators aim Main Camera to pick their own preview shot
-                Pose? previewPose = GetPreviewPose(booth.transform);
-                float previewFov = Camera.main != null ? Camera.main.fieldOfView : 45f;
                 // canonical pose so the plot's own transform decides where the booth
                 // sits and which way the front faces at import time
                 duplicate.transform.position = Vector3.zero;
@@ -56,7 +53,7 @@ namespace LegendsNexus.Alley.Editor
 
                 // park the copy away from the scene so the preview only shows the booth
                 duplicate.transform.position = new Vector3(0f, 4000f, 0f);
-                File.WriteAllBytes(Path.Combine(stagingDir, "preview.png"), CapturePreview(duplicate, previewPose, previewFov));
+                File.WriteAllBytes(Path.Combine(stagingDir, "preview.png"), CapturePreview(duplicate));
 
                 var metadata = new BoothMetadataPayload
                 {
@@ -155,74 +152,211 @@ namespace LegendsNexus.Alley.Editor
             }
         }
 
-        // camera pose relative to the booth, so the same framing works on the
-        // export copy wherever it ends up
-        private static Pose? GetPreviewPose(Transform booth)
-        {
-            Camera camera = Camera.main;
-            if (camera == null) return null;
-            return new Pose(
-                booth.InverseTransformPoint(camera.transform.position),
-                Quaternion.Inverse(booth.rotation) * camera.transform.rotation);
-        }
+        // preview capture: the export copy gets a small photo studio of its own.
+        // this used to copy whatever pose the scene's Main Camera happened to be
+        // in, which almost always left the booth tiny and off to one side
+        private const int PreviewSize = 1024;
+        private const int PreviewSupersample = 2;
+        private const int PreviewLayer = 31;
 
-        private static byte[] CapturePreview(GameObject root, Pose? framing, float fov)
+        private static byte[] CapturePreview(GameObject root)
         {
-            const int size = 512;
-
             Bounds bounds = ComputeBounds(root);
-            var cameraObject = new GameObject("AlleyPreviewCamera");
-            Camera camera = cameraObject.AddComponent<Camera>();
-            RenderTexture rt = RenderTexture.GetTemporary(size, size, 24);
-            var previous = RenderTexture.active;
+            float radius = Mathf.Max(bounds.extents.magnitude, 0.25f);
+            int render = PreviewSize * PreviewSupersample;
+
+            var originalLayers = new Dictionary<Transform, int>();
+            var parkedLights = new List<Light>();
+            var rig = new GameObject("AlleyPreviewRig") { hideFlags = HideFlags.HideAndDontSave };
+            UnityEngine.Rendering.AmbientMode ambientMode = RenderSettings.ambientMode;
+            Color ambientLight = RenderSettings.ambientLight;
+            float ambientIntensity = RenderSettings.ambientIntensity;
+            RenderTexture full = RenderTexture.GetTemporary(render, render, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            RenderTexture downscale = RenderTexture.GetTemporary(PreviewSize, PreviewSize, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            RenderTexture previousActive = RenderTexture.active;
+            Texture2D texture = null;
             try
             {
-                camera.backgroundColor = new Color(0.04f, 0.04f, 0.04f, 1f);
-                camera.clearFlags = CameraClearFlags.SolidColor;
-
-                float radius = Mathf.Max(bounds.extents.magnitude, 0.5f);
-                if (framing.HasValue)
+                // only the booth is on the capture layer, so the rest of the scene
+                // stays out of frame and the rig lights stay off everything else
+                foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
                 {
-                    camera.fieldOfView = fov;
-                    camera.transform.position = root.transform.TransformPoint(framing.Value.position);
-                    camera.transform.rotation = root.transform.rotation * framing.Value.rotation;
+                    originalLayers[child] = child.gameObject.layer;
+                    child.gameObject.layer = PreviewLayer;
                 }
-                else
+                // a scene sun would light the booth from whatever angle the creator
+                // left it at, including not at all on a night scene. park them so
+                // every booth gets the same shot, the booth's own lights stay on
+                foreach (Light light in UnityEngine.Object.FindObjectsOfType<Light>())
                 {
-                    camera.fieldOfView = 45f;
-                    Vector3 direction = new Vector3(1f, 0.7f, 1f).normalized;
-                    camera.transform.position = bounds.center + direction * radius * 2.2f;
-                    camera.transform.LookAt(bounds.center);
+                    if (light.type != LightType.Directional || !light.isActiveAndEnabled) continue;
+                    if (light.transform.IsChildOf(root.transform)) continue;
+                    light.enabled = false;
+                    parkedLights.Add(light);
                 }
-                camera.nearClipPlane = 0.01f;
-                camera.farClipPlane = Mathf.Max(radius * 10f, Vector3.Distance(camera.transform.position, bounds.center) + radius * 4f);
+                // and a fixed ambient on top, otherwise a booth built in a dark
+                // scene ships a preview where the inside is a black hole
+                RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+                RenderSettings.ambientLight = new Color(0.19f, 0.17f, 0.22f, 1f);
+                RenderSettings.ambientIntensity = 1f;
 
-                camera.targetTexture = rt;
+                Camera camera = BuildPreviewRig(rig, root.transform.rotation, bounds, radius);
+                camera.targetTexture = full;
                 camera.Render();
+                camera.targetTexture = null;
 
-                RenderTexture.active = rt;
-                var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
-                texture.ReadPixels(new Rect(0, 0, size, size), 0, 0);
+                // rendered at double size and scaled down, cheapest way to keep the
+                // booth's edges clean without depending on project quality settings
+                full.filterMode = FilterMode.Bilinear;
+                Graphics.Blit(full, downscale);
+
+                RenderTexture.active = downscale;
+                texture = new Texture2D(PreviewSize, PreviewSize, TextureFormat.RGBA32, false);
+                texture.ReadPixels(new Rect(0, 0, PreviewSize, PreviewSize), 0, 0);
                 texture.Apply();
-                byte[] png = texture.EncodeToPNG();
-                UnityEngine.Object.DestroyImmediate(texture);
-                return png;
+                return texture.EncodeToPNG();
             }
             finally
             {
-                RenderTexture.active = previous;
-                camera.targetTexture = null;
-                RenderTexture.ReleaseTemporary(rt);
-                UnityEngine.Object.DestroyImmediate(cameraObject);
+                RenderTexture.active = previousActive;
+                RenderTexture.ReleaseTemporary(downscale);
+                RenderTexture.ReleaseTemporary(full);
+                if (texture != null) UnityEngine.Object.DestroyImmediate(texture);
+                UnityEngine.Object.DestroyImmediate(rig);
+                RenderSettings.ambientMode = ambientMode;
+                RenderSettings.ambientLight = ambientLight;
+                RenderSettings.ambientIntensity = ambientIntensity;
+                foreach (Light light in parkedLights)
+                {
+                    if (light != null) light.enabled = true;
+                }
+                foreach (KeyValuePair<Transform, int> entry in originalLayers)
+                {
+                    if (entry.Key != null) entry.Key.gameObject.layer = entry.Value;
+                }
             }
         }
 
+        // three quarter product shot: camera off the booth's front corner, keyed
+        // from above with a cool fill and a pink rim so it matches the sdk look
+        private static Camera BuildPreviewRig(GameObject rig, Quaternion boothRotation, Bounds bounds, float radius)
+        {
+            var cameraObject = new GameObject("Camera");
+            cameraObject.transform.SetParent(rig.transform, false);
+            Camera camera = cameraObject.AddComponent<Camera>();
+            camera.enabled = false;
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = new Color(0.039f, 0.039f, 0.043f, 1f);
+            camera.cullingMask = 1 << PreviewLayer;
+            camera.fieldOfView = 32f;
+            camera.aspect = 1f;
+
+            // booths are built facing local +Z, the FRONT arrow in the inspector,
+            // so stand off that corner instead of shooting a flat elevation
+            Vector3 direction = (boothRotation * new Vector3(0.62f, 0.40f, 1f)).normalized;
+            Quaternion look = Quaternion.LookRotation(-direction, Vector3.up);
+            // aim at the middle of what the lens actually sees, then pull back to
+            // fit it, otherwise perspective leaves the booth sitting low in frame
+            float distance = FitDistance(bounds, bounds.center, look, camera.fieldOfView);
+            Vector3 aim = CentreAim(bounds, look, distance);
+            distance = FitDistance(bounds, aim, look, camera.fieldOfView);
+            camera.transform.position = aim + direction * distance;
+            camera.transform.rotation = look;
+            camera.nearClipPlane = Mathf.Max(0.01f, distance - radius * 3f);
+            camera.farClipPlane = distance + radius * 6f + 10f;
+
+            AddRigLight(rig, look * Quaternion.Euler(26f, -36f, 0f), new Color(1f, 0.97f, 0.94f), 1.3f, LightShadows.Soft);
+            AddRigLight(rig, look * Quaternion.Euler(10f, 54f, 0f), new Color(0.74f, 0.79f, 1f), 0.55f, LightShadows.None);
+            AddRigLight(rig, look * Quaternion.Euler(-12f, 168f, 0f), new Color(1f, 0.36f, 0.62f), 0.85f, LightShadows.None);
+            return camera;
+        }
+
+        private static void AddRigLight(GameObject rig, Quaternion rotation, Color color, float intensity, LightShadows shadows)
+        {
+            var go = new GameObject("Light");
+            go.transform.SetParent(rig.transform, false);
+            go.transform.rotation = rotation;
+            Light light = go.AddComponent<Light>();
+            light.type = LightType.Directional;
+            light.color = color;
+            light.intensity = intensity;
+            light.shadows = shadows;
+            light.shadowStrength = 0.6f;
+            light.cullingMask = 1 << PreviewLayer;
+        }
+
+        // pulls back just far enough that every corner of the booth lands inside
+        // the frame, so a small booth fills it and a big one still fits whole
+        private static float FitDistance(Bounds bounds, Vector3 aim, Quaternion look, float fieldOfView)
+        {
+            Quaternion inverse = Quaternion.Inverse(look);
+            float tan = Mathf.Tan(fieldOfView * 0.5f * Mathf.Deg2Rad);
+            float distance = 0f;
+            for (int i = 0; i < 8; i++)
+            {
+                // corner measured from the aim point, along the camera's axes
+                Vector3 local = inverse * (Corner(bounds, i) - aim);
+                distance = Mathf.Max(distance, Mathf.Abs(local.y) / tan - local.z);
+                distance = Mathf.Max(distance, Mathf.Abs(local.x) / tan - local.z);
+            }
+            return Mathf.Max(distance * 1.09f, 0.5f);
+        }
+
+        // the near corners of a box spread wider on screen than the far ones, so
+        // aiming at the middle of the box hangs the booth off centre. a couple of
+        // passes over the projected corners settles on an aim point that centres it
+        private static Vector3 CentreAim(Bounds bounds, Quaternion look, float distance)
+        {
+            Quaternion inverse = Quaternion.Inverse(look);
+            Vector3 aim = bounds.center;
+            for (int pass = 0; pass < 3; pass++)
+            {
+                float minX = float.MaxValue, maxX = float.MinValue;
+                float minY = float.MaxValue, maxY = float.MinValue;
+                for (int i = 0; i < 8; i++)
+                {
+                    Vector3 local = inverse * (Corner(bounds, i) - aim);
+                    float depth = Mathf.Max(distance + local.z, 0.01f);
+                    minX = Mathf.Min(minX, local.x / depth);
+                    maxX = Mathf.Max(maxX, local.x / depth);
+                    minY = Mathf.Min(minY, local.y / depth);
+                    maxY = Mathf.Max(maxY, local.y / depth);
+                }
+                var shift = new Vector3((minX + maxX) * 0.5f, (minY + maxY) * 0.5f, 0f);
+                aim += look * (shift * distance);
+            }
+            return aim;
+        }
+
+        private static Vector3 Corner(Bounds bounds, int index)
+        {
+            return new Vector3(
+                (index & 1) == 0 ? bounds.min.x : bounds.max.x,
+                (index & 2) == 0 ? bounds.min.y : bounds.max.y,
+                (index & 4) == 0 ? bounds.min.z : bounds.max.z);
+        }
+
+        // only what actually renders counts. counting disabled renderers dragged
+        // the box out to wherever their transform sat and shrank the booth to a dot
         private static Bounds ComputeBounds(GameObject root)
         {
-            Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
-            if (renderers.Length == 0) return new Bounds(root.transform.position, Vector3.one);
-            Bounds bounds = renderers[0].bounds;
-            foreach (Renderer renderer in renderers) bounds.Encapsulate(renderer.bounds);
+            bool found = false;
+            var bounds = new Bounds(root.transform.position, Vector3.one);
+            foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!renderer.enabled || !renderer.gameObject.activeInHierarchy) continue;
+                Bounds candidate = renderer.bounds;
+                if (candidate.size == Vector3.zero) continue;
+                if (found)
+                {
+                    bounds.Encapsulate(candidate);
+                }
+                else
+                {
+                    bounds = candidate;
+                    found = true;
+                }
+            }
             return bounds;
         }
 
