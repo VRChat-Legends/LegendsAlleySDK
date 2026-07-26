@@ -1,7 +1,7 @@
 {
   "name": "com.legendsnexus.alley-sdk",
   "displayName": "Legends Alley SDK",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "unity": "2022.3",
   "description": "Build, check, and upload your community booth for Legends Alley events. Sign in with Discord, keep your booth inside the event limits, and ship it straight from Unity.",
   "author": {
