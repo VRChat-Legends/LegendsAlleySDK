@@ -253,13 +253,13 @@ namespace LegendsNexus.Alley.Editor
             Material teal = FrameMaterial("AlleyBoardTeal", new Color(0.12f, 0.82f, 0.93f), 0.25f);
             Material gold = FrameMaterial("AlleyBoardGold", new Color(1f, 0.84f, 0f), 0.25f);
 
-            // legs on the panel centre line, same as the big info wall
-            FrameCube(root, "Leg L", new Vector3(-1.06f, 0.32f, 0.06f), new Vector3(0.18f, 0.64f, 0.18f), dark);
-            FrameCube(root, "Leg R", new Vector3(1.06f, 0.32f, 0.06f), new Vector3(0.18f, 0.64f, 0.18f), dark);
-            FrameCube(root, "Foot L", new Vector3(-1.06f, 0.03f, 0.06f), new Vector3(0.38f, 0.06f, 0.38f), pink);
-            FrameCube(root, "Foot R", new Vector3(1.06f, 0.03f, 0.06f), new Vector3(0.38f, 0.06f, 0.38f), pink);
+            // legs on the panel centre line, sized off the trim like the info wall
+            FrameCube(root, "Leg L", new Vector3(-1.06f, 0.345f, 0.06f), new Vector3(0.13f, 0.65f, 0.13f), dark);
+            FrameCube(root, "Leg R", new Vector3(1.06f, 0.345f, 0.06f), new Vector3(0.13f, 0.65f, 0.13f), dark);
+            FrameCube(root, "Foot L", new Vector3(-1.06f, 0.032f, 0.06f), new Vector3(0.38f, 0.06f, 0.38f), pink);
+            FrameCube(root, "Foot R", new Vector3(1.06f, 0.032f, 0.06f), new Vector3(0.38f, 0.06f, 0.38f), pink);
             FrameCube(root, "Panel", new Vector3(0f, 1.55f, 0.06f), new Vector3(2.9f, 1.82f, 0.12f), dark);
-            FrameCube(root, "Base Trim", new Vector3(0f, 0.67f, 0.06f), new Vector3(2.98f, 0.05f, 0.14f), pink);
+            FrameCube(root, "Base Trim", new Vector3(0f, 0.655f, 0.06f), new Vector3(2.98f, 0.06f, 0.14f), pink);
 
             // strip across the crown. the canvas in front of it is flipped a half
             // turn, so the blocks run the other way to read the same from the front

@@ -56,13 +56,19 @@ namespace LegendsNexus.Alley.Editor
             float panelTop = PanelCenterY + PanelHeight * 0.5f;
 
             float legX = halfWidth - 0.7f;
-            Cube(root, "Leg L", new Vector3(-legX, panelBottom * 0.5f, 0f), new Vector3(0.2f, panelBottom, 0.2f), slab);
-            Cube(root, "Leg R", new Vector3(legX, panelBottom * 0.5f, 0f), new Vector3(0.2f, panelBottom, 0.2f), slab);
-            Cube(root, "Foot L", new Vector3(-legX, 0.03f, 0f), new Vector3(0.44f, 0.06f, 0.44f), pink);
-            Cube(root, "Foot R", new Vector3(legX, 0.03f, 0f), new Vector3(0.44f, 0.06f, 0.44f), pink);
+            // legs sized off the trim so nothing pokes past it from the side, and
+            // every joint overlaps a little, flush faces z fight
+            float legTop = panelBottom + 0.03f;
+            const float legBottom = 0.02f;
+            var legSize = new Vector3(0.15f, legTop - legBottom, 0.15f);
+            float legY = (legTop + legBottom) * 0.5f;
+            Cube(root, "Leg L", new Vector3(-legX, legY, 0f), legSize, slab);
+            Cube(root, "Leg R", new Vector3(legX, legY, 0f), legSize, slab);
+            Cube(root, "Foot L", new Vector3(-legX, 0.032f, 0f), new Vector3(0.44f, 0.06f, 0.44f), pink);
+            Cube(root, "Foot R", new Vector3(legX, 0.032f, 0f), new Vector3(0.44f, 0.06f, 0.44f), pink);
 
             Cube(root, "Panel", new Vector3(0f, PanelCenterY, 0f), new Vector3(PanelWidth, PanelHeight, 0.14f), slab);
-            Cube(root, "Base Trim", new Vector3(0f, panelBottom + 0.03f, 0f), new Vector3(PanelWidth + 0.08f, 0.06f, 0.16f), pink);
+            Cube(root, "Base Trim", new Vector3(0f, panelBottom + 0.015f, 0f), new Vector3(PanelWidth + 0.08f, 0.06f, 0.16f), pink);
 
             // accent run across the crown, same order as the rule on the face
             float left = -halfWidth;
@@ -72,7 +78,7 @@ namespace LegendsNexus.Alley.Editor
             for (int i = 0; i < shares.Length; i++)
             {
                 float width = PanelWidth * shares[i];
-                Cube(root, names[i], new Vector3(left + width * 0.5f, panelTop + 0.05f, 0f),
+                Cube(root, names[i], new Vector3(left + width * 0.5f, panelTop + 0.04f, 0f),
                     new Vector3(width, 0.1f, 0.16f), colors[i]);
                 left += width;
             }
