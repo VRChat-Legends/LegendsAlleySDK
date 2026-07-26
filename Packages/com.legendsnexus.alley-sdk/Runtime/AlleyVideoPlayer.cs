@@ -30,6 +30,9 @@ namespace LegendsNexus.Alley
         [Tooltip("Start the video over when it ends. Streams ignore this and just reconnect")]
         public bool loop = true;
 
+        [Tooltip("Shown on the screen while nothing is playing. Leave empty to keep the Legends Alley plate.")]
+        public Texture idleImage;
+
         [Header("Wired up by the prefab")]
         public BaseVRCVideoPlayer videoPlayer;
         public AudioSource audioSource;
@@ -37,6 +40,10 @@ namespace LegendsNexus.Alley
         public TextMeshProUGUI statusText;
         public GameObject playIcon;
         public GameObject pauseIcon;
+        public GameObject idleScreen;
+        public Renderer idleRenderer;
+        public GameObject loadingIndicator;
+        public Transform loadingSpinner;
 
         private bool _inRange;
         private bool _loading;
@@ -44,6 +51,7 @@ namespace LegendsNexus.Alley
         private bool _paused;
         private bool _ended;
         private bool _resuming;
+        private bool _busy;
         private float _resumeDeadline;
         private float _nextCheck;
         private float _nextAttempt;
@@ -57,12 +65,16 @@ namespace LegendsNexus.Alley
             // whitelist bans range writes for every booth, ours included)
             if (audioSource != null && volumeSlider != null) audioSource.volume = volumeSlider.value;
             if (videoPlayer != null) videoPlayer.Loop = loop;
+            if (idleImage != null && idleRenderer != null) idleRenderer.material.mainTexture = idleImage;
             SetStatus(HasUrl() ? "WALK UP TO PLAY" : "NO VIDEO SET");
             RefreshIcons();
         }
 
         void Update()
         {
+            // spinner has to turn every frame, the state check below does not
+            if (_busy && loadingSpinner != null) loadingSpinner.Rotate(0f, 0f, -220f * Time.deltaTime);
+
             // just a distance check a few times a second, not real per frame work
             if (Time.time < _nextCheck) return;
             _nextCheck = Time.time + 0.25f;
@@ -129,6 +141,7 @@ namespace LegendsNexus.Alley
             _loading = true;
             _loadStarted = Time.time;
             SetStatus("LOADING");
+            RefreshIcons();
             videoPlayer.PlayURL(videoUrl);
         }
 
@@ -310,6 +323,10 @@ namespace LegendsNexus.Alley
             bool showPause = _playing || _resuming;
             if (playIcon != null) playIcon.SetActive(!showPause);
             if (pauseIcon != null) pauseIcon.SetActive(showPause);
+
+            _busy = _loading || _resuming;
+            if (loadingIndicator != null) loadingIndicator.SetActive(_busy);
+            if (idleScreen != null) idleScreen.SetActive(!_playing);
         }
     }
 }

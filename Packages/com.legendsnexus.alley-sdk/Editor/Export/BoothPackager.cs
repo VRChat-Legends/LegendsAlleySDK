@@ -123,6 +123,12 @@ namespace LegendsNexus.Alley.Editor
                 UnityEngine.Object.DestroyImmediate(probe);
             }
 
+            // slides are already in the atlas, keeping the refs ships them twice
+            foreach (AlleySlideshowSource source in root.GetComponentsInChildren<AlleySlideshowSource>(true))
+            {
+                UnityEngine.Object.DestroyImmediate(source);
+            }
+
             float maxAudioRange = limits != null && limits.maxAudioRangeMeters > 0f ? limits.maxAudioRangeMeters : 0f;
             // video player speakers promise a 5m cap regardless of the event limit
             foreach (AlleyVideoPlayer player in root.GetComponentsInChildren<AlleyVideoPlayer>(true))
@@ -149,6 +155,34 @@ namespace LegendsNexus.Alley.Editor
                 {
                     spatial.Far = maxAudioRange;
                 }
+            }
+
+            IsolateAudio(root);
+        }
+
+        // opt in, drags every sound down so it dies at the plot edge. voices dont
+        // go through these components so they are untouched
+        private static void IsolateAudio(GameObject root)
+        {
+            var booth = root.GetComponent<LegendsBooth>();
+            if (booth == null || !booth.isolateBoothAudio) return;
+
+            Vector3 limit = LegendsBooth.BoundsLimit;
+            float reach = Mathf.Max(1f, new Vector2(limit.x, limit.z).magnitude * 0.5f);
+
+            foreach (AudioSource source in root.GetComponentsInChildren<AudioSource>(true))
+            {
+                // measured from the booth origin so a speaker at the back still reaches the front
+                float offset = Vector3.Distance(root.transform.position, source.transform.position);
+                float range = Mathf.Max(1f, reach - offset);
+                source.rolloffMode = AudioRolloffMode.Linear;
+                source.minDistance = Mathf.Min(source.minDistance, range * 0.25f);
+                source.maxDistance = Mathf.Min(source.maxDistance, range);
+
+                var spatial = source.GetComponent<VRC.SDKBase.VRC_SpatialAudioSource>();
+                if (spatial == null) continue;
+                spatial.Far = Mathf.Min(spatial.Far, range);
+                spatial.Near = Mathf.Min(spatial.Near, range * 0.25f);
             }
         }
 

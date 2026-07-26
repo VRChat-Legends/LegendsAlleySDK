@@ -13,6 +13,9 @@ namespace LegendsNexus.Alley
         [Tooltip("Draw the size limit box in the scene view.")]
         public bool showBounds = true;
 
+        [Tooltip("Keep every sound in this booth inside your plot. Player voices are never affected.")]
+        public bool isolateBoothAudio;
+
         // the sdk window pushes the real per event limit in here, this is just the fallback
         public static Vector3 BoundsLimit = new Vector3(5f, 5f, 5f);
 

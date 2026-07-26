@@ -58,6 +58,7 @@ namespace LegendsNexus.Alley.Editor
             "VRCSDKBaseNetworking", "VRCSDKBaseVRCPlayerApi", "VRCSDKBaseUtilities",
             "VRCSDKBaseVRCUrl", "VRCUdonUdonBehaviour", "VRCUdonCommonInterfacesIUdonEventReceiver",
             "VRCSDK3ComponentsVRCPickup", "VRCSDK3ComponentsVRCAvatarPedestal",
+            "VRCSDK3ComponentsVRCObjectSync",
             "VRCSDK3VideoComponentsBaseBaseVRCVideoPlayer",
             "VRCSDK3VideoComponentsAVProVRCAVProVideoPlayer",
             "VRCSDK3VideoComponentsVRCUnityVideoPlayer",
@@ -106,8 +107,8 @@ namespace LegendsNexus.Alley.Editor
             "UnityEngineAudioSource.set_rolloffMode",
             "UnityEngineAudioSource.SetCustomCurve",
 
-            // other people are not toys
-            "VRCSDKBaseVRCPlayerApi.TeleportTo",
+            // other people are not toys. TeleportTo is allowed for warp pads but
+            // the analyzer keeps the markers inside the booth
             "VRCSDKBaseVRCPlayerApi.SetVelocity",
             "VRCSDKBaseVRCPlayerApi.Immobilize",
             "VRCSDKBaseVRCPlayerApi.SetWalkSpeed",

@@ -9,6 +9,7 @@ namespace LegendsNexus.Alley.Editor
         private const string GroupButton = AlleyConfig.PackageRoot + "/Runtime/Prefabs/Alley Group Button.prefab";
         private const string AvatarPedestal = AlleyConfig.PackageRoot + "/Runtime/Prefabs/Alley Avatar Pedestal.prefab";
         private const string VideoPlayer = AlleyConfig.PackageRoot + "/Runtime/Prefabs/Alley Video Player.prefab";
+        private const string Slideshow = AlleyConfig.PackageRoot + "/Runtime/Prefabs/Alley Slideshow.prefab";
 
         [MenuItem("GameObject/Legends Alley/Group Button", false, 10)]
         private static void SpawnGroupButton(MenuCommand command)
@@ -29,6 +30,12 @@ namespace LegendsNexus.Alley.Editor
         {
             // pivot is the center of the screen, put it at head height
             Spawn(VideoPlayer, command, new Vector3(0f, 1.5f, 0f));
+        }
+
+        [MenuItem("GameObject/Legends Alley/Slideshow", false, 13)]
+        private static void SpawnSlideshow(MenuCommand command)
+        {
+            Spawn(Slideshow, command, new Vector3(0f, 1.5f, 0f));
         }
 
         private static void Spawn(string path, MenuCommand command, Vector3 offset)

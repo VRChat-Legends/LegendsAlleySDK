@@ -116,6 +116,8 @@ namespace LegendsNexus.Alley.Editor
 
             CollectAssetStats(root, stats, report, offenders);
             CollectBlockers(root, report);
+            CollectTeleportBlockers(root, limits, report);
+            CollectSlideshowBlockers(root, limits, report);
 
             int pbMeshes = ProBuilderBaker.CountMeshes(root);
             if (pbMeshes > 0)
@@ -508,6 +510,47 @@ namespace LegendsNexus.Alley.Editor
                     report.Blockers.Add($"The Udon on \"{udon.gameObject.name}\" calls things booths are not allowed to use: {string.Join(", ", flagged)}. Keep scripts to simple booth interactions or ask staff about the list.");
                 }
             }
+        }
+
+        // warp pads are fine inside your own booth, not out across the event
+        private static void CollectTeleportBlockers(GameObject root, EventLimits limits, BoothReport report)
+        {
+            AlleyTeleportButton[] buttons = root.GetComponentsInChildren<AlleyTeleportButton>(true);
+            if (buttons.Length == 0) return;
+
+            BoundsLimit limit = limits.maxBoundsMeters ?? new BoundsLimit { x = 5, y = 5, z = 5 };
+            var box = new Bounds(new Vector3(0f, limit.y * 0.5f, 0f), new Vector3(limit.x, limit.y, limit.z));
+            var strays = new List<string>();
+
+            foreach (AlleyTeleportButton button in buttons)
+            {
+                if (Outside(root, box, button.destination) || Outside(root, box, button.returnPoint))
+                {
+                    strays.Add(button.gameObject.name);
+                }
+            }
+
+            if (strays.Count == 0) return;
+            report.Blockers.Add($"Move the teleport markers on \"{string.Join("\", \"", strays)}\" inside the booth box. Warp buttons can only move people around your own booth.");
+        }
+
+        // the baker refuses to go over, this catches decks baked under an older cap
+        private static void CollectSlideshowBlockers(GameObject root, EventLimits limits, BoothReport report)
+        {
+            int max = limits != null && limits.maxSlideshowImages > 0 ? limits.maxSlideshowImages : 0;
+            if (max <= 0) return;
+
+            foreach (AlleySlideshow show in root.GetComponentsInChildren<AlleySlideshow>(true))
+            {
+                if (show.slideCount <= max) continue;
+                report.Blockers.Add($"\"{show.gameObject.name}\" has {show.slideCount} slides and this event allows {max}. Trim the list and bake again.");
+            }
+        }
+
+        private static bool Outside(GameObject root, Bounds box, Transform marker)
+        {
+            if (marker == null) return false;
+            return !box.Contains(root.transform.InverseTransformPoint(marker.position));
         }
 
         private static void BuildChecklist(BoothReport report, EventLimits limits, bool limitsBypass)

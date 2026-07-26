@@ -110,9 +110,11 @@ namespace LegendsNexus.Alley.Editor
             Sprite rounded = EnsureShapeSprite("AlleyRounded", 64, RoundedSpriteDistance, new Vector4(24f, 24f, 24f, 24f));
             Sprite play = EnsureShapeSprite("AlleyPlayIcon", 64, PlayIconDistance, Vector4.zero);
             Sprite pause = EnsureShapeSprite("AlleyPauseIcon", 64, PauseIconDistance, Vector4.zero);
+            Sprite spinner = EnsureShapeSprite("AlleySpinner", 64, SpinnerDistance, Vector4.zero);
             BuildGroupButton(disc, rounded);
             BuildAvatarPedestal();
-            BuildVideoPlayer(play, pause);
+            BuildVideoPlayer(play, pause, spinner);
+            BuildSlideshow(play);
             AssetDatabase.SaveAssets();
             Debug.Log("[LegendsAlley] Bundled prefabs rebuilt.");
         }
@@ -146,6 +148,10 @@ namespace LegendsNexus.Alley.Editor
             EnsureProgram("AlleyDirectoryKiosk");
             EnsureProgram("AlleyDirectoryEntry");
             EnsureProgram("AlleySignFeed");
+            EnsureProgram("AlleyAnimationButton");
+            EnsureProgram("AlleyPickupReset");
+            EnsureProgram("AlleyTeleportButton");
+            EnsureProgram("AlleySlideshow");
         }
 
         private static void EnsureProgram(string className)
@@ -261,6 +267,76 @@ namespace LegendsNexus.Alley.Editor
             }
         }
 
+        // slides live in one baked atlas, the bar just steps the index
+        private static void BuildSlideshow(Sprite arrowIcon)
+        {
+            var root = new GameObject("Alley Slideshow");
+            try
+            {
+                var proxy = (AlleySlideshow)UdonSharpComponentExtensions.AddUdonSharpComponent(root, typeof(AlleySlideshow));
+                UdonBehaviour backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(proxy);
+                backing.SyncMethod = VRC.SDKBase.Networking.SyncType.None;
+                root.AddComponent<AlleySlideshowSource>();
+
+                var board = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                board.name = "Board";
+                Object.DestroyImmediate(board.GetComponent<Collider>());
+                board.transform.SetParent(root.transform, false);
+                board.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+                board.transform.localScale = new Vector3(ScreenWidth, ScreenHeight, 1f);
+                var boardRenderer = board.GetComponent<MeshRenderer>();
+                boardRenderer.sharedMaterial = EnsureIdleMaterial();
+                boardRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+                const float slideBarHeight = 120f;
+                Transform bar = MakeWorldCanvas(root.transform, "Slide Bar", new Vector2(BarWidth, slideBarHeight), 0.0015625f,
+                    new Vector3(0f, -(ScreenHeight * 0.5f) - 0.12f, 0f));
+                bar.gameObject.AddComponent<GraphicRaycaster>();
+                bar.gameObject.AddComponent<VRCUiShape>();
+
+                AddImage(bar, "Edge", null, Line, new Vector2(BarWidth, slideBarHeight));
+                AddImage(bar, "Fill", null, CardFill, new Vector2(BarInner, slideBarHeight - 8f));
+                AddAccentRun(bar, BarInner, 6f, (slideBarHeight - 8f) * 0.5f - 3f);
+
+                Button prev = SlideButton(bar, "Prev Button", arrowIcon, -400f, 180f);
+                Button next = SlideButton(bar, "Next Button", arrowIcon, 400f, 0f);
+                UnityEventTools.AddStringPersistentListener(prev.onClick, backing.SendCustomEvent, "PreviousSlide");
+                UnityEventTools.AddStringPersistentListener(next.onClick, backing.SendCustomEvent, "NextSlide");
+
+                TMP_Text counter = AddLabel(bar, "Counter", "1 / 1", new Vector2(400f, 60f), 22f, 38f, LabelIdle);
+                ((RectTransform)counter.transform).anchoredPosition = new Vector2(0f, -4f);
+
+                proxy.target = boardRenderer;
+                proxy.counterLabel = (TextMeshProUGUI)counter;
+                UdonSharpEditorUtility.CopyProxyToUdon(proxy);
+
+                SavePrefab(root, "Alley Slideshow");
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        private static Button SlideButton(Transform bar, string name, Sprite icon, float x, float iconRotation)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(bar, false);
+            var rect = (RectTransform)go.transform;
+            rect.sizeDelta = new Vector2(80f, 80f);
+            rect.anchoredPosition = new Vector2(x, -4f);
+
+            AddImage(go.transform, "Edge", null, Pink, new Vector2(80f, 80f));
+            Image face = AddImage(go.transform, "Face", null, RowIdle, new Vector2(72f, 72f));
+            face.raycastTarget = true;
+            Image arrow = AddImage(face.transform, "Arrow", icon, Color.white, new Vector2(34f, 34f));
+            arrow.transform.localRotation = Quaternion.Euler(0f, 0f, iconRotation);
+
+            var button = go.AddComponent<Button>();
+            button.targetGraphic = face;
+            return button;
+        }
+
         // the layer art ships as plain pngs, first build flips them to sprites
         private static Sprite EnsureCardSprite(string name)
         {
@@ -291,7 +367,7 @@ namespace LegendsNexus.Alley.Editor
         // proximity driven booth video player: avpro engine so youtube links and
         // vrcdn streams both work, a screen quad, a short range speaker, and a
         // control bar with play/pause, volume, and a status readout
-        private static void BuildVideoPlayer(Sprite playIcon, Sprite pauseIcon)
+        private static void BuildVideoPlayer(Sprite playIcon, Sprite pauseIcon, Sprite spinnerIcon)
         {
             var root = new GameObject("Alley Video Player");
             try
@@ -326,6 +402,18 @@ namespace LegendsNexus.Alley.Editor
                 // per instance material so booths never draw each others streams
                 screenSo.FindProperty("useSharedMaterial").boolValue = false;
                 screenSo.ApplyModifiedPropertiesWithoutUndo();
+
+                // avpro leaves the last frame stuck on the quad when it stops
+                var idle = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                idle.name = "Idle Screen";
+                Object.DestroyImmediate(idle.GetComponent<Collider>());
+                idle.transform.SetParent(root.transform, false);
+                idle.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+                idle.transform.localPosition = new Vector3(0f, 0f, 0.004f);
+                idle.transform.localScale = new Vector3(ScreenWidth, ScreenHeight, 1f);
+                var idleRenderer = idle.GetComponent<MeshRenderer>();
+                idleRenderer.sharedMaterial = EnsureIdleMaterial();
+                idleRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
                 var audioGo = new GameObject("Audio");
                 audioGo.transform.SetParent(root.transform, false);
@@ -395,12 +483,28 @@ namespace LegendsNexus.Alley.Editor
                 status.enableWordWrapping = false;
                 ((RectTransform)status.transform).anchoredPosition = new Vector2(332f, RowY - 10f);
 
+                // corner chip, dead centre just covers the booths own art
+                Transform overlay = MakeWorldCanvas(root.transform, "Screen Overlay", new Vector2(1024f, 576f), 0.0015625f,
+                    new Vector3(0f, 0f, 0.008f));
+                var spinnerRoot = new GameObject("Loading Spinner", typeof(RectTransform));
+                spinnerRoot.transform.SetParent(overlay, false);
+                var spinnerRect = (RectTransform)spinnerRoot.transform;
+                spinnerRect.sizeDelta = new Vector2(128f, 128f);
+                spinnerRect.anchoredPosition = new Vector2(388f, -164f);
+                AddImage(spinnerRoot.transform, "Plate", null, new Color32(5, 5, 5, 255), new Vector2(128f, 128f));
+                Image spinner = AddImage(spinnerRoot.transform, "Arc", spinnerIcon, Pink, new Vector2(88f, 88f));
+                spinnerRoot.SetActive(false);
+
                 proxy.videoPlayer = avpro;
                 proxy.audioSource = audio;
                 proxy.volumeSlider = volume;
                 proxy.statusText = (TextMeshProUGUI)status;
                 proxy.playIcon = playImage.gameObject;
                 proxy.pauseIcon = pauseImage.gameObject;
+                proxy.idleScreen = idle;
+                proxy.idleRenderer = idleRenderer;
+                proxy.loadingIndicator = spinnerRoot;
+                proxy.loadingSpinner = spinner.transform;
                 // usharp only syncs proxy fields to the backing behaviour on scene
                 // saves and world builds, neither happens during a prefab build
                 UdonSharpEditorUtility.CopyProxyToUdon(proxy);
@@ -511,6 +615,56 @@ namespace LegendsNexus.Alley.Editor
             return material;
         }
 
+        // the sakura plate creators get when they leave the idle image empty
+        private static Material EnsureIdleMaterial()
+        {
+            Texture2D fallback = EnsureFallbackTexture();
+            string path = MaterialFolder + "/AlleyVideoIdle.mat";
+
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(Shader.Find("Unlit/Texture"));
+                AssetDatabase.CreateAsset(material, path);
+            }
+
+            if (material.mainTexture != fallback)
+            {
+                material.mainTexture = fallback;
+                EditorUtility.SetDirty(material);
+            }
+            return material;
+        }
+
+        // 1600x900 source, crunched down to 1024 wide
+        private static Texture2D EnsureFallbackTexture()
+        {
+            string path = TextureFolder + "/AlleyVideoFallback.png";
+            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (importer == null)
+            {
+                Debug.LogError("[LegendsAlley] Missing AlleyVideoFallback.png");
+                return null;
+            }
+
+            if (importer.maxTextureSize != 1024 || !importer.crunchedCompression)
+            {
+                importer.textureType = TextureImporterType.Default;
+                importer.alphaSource = TextureImporterAlphaSource.None;
+                importer.alphaIsTransparency = false;
+                importer.mipmapEnabled = true;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.filterMode = FilterMode.Trilinear;
+                importer.maxTextureSize = 1024;
+                importer.textureCompression = TextureImporterCompression.Compressed;
+                importer.crunchedCompression = true;
+                importer.compressionQuality = 60;
+                importer.SaveAndReimport();
+            }
+
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        }
+
         // antialiased white shapes from little distance functions, tinted by the
         // ui images that use them. positive distance means inside the shape
         private static Sprite EnsureShapeSprite(string name, int size, System.Func<Vector2, float> distance, Vector4 border)
@@ -572,6 +726,21 @@ namespace LegendsNexus.Alley.Editor
             float outside = new Vector2(Mathf.Max(q.x, 0f), Mathf.Max(q.y, 0f)).magnitude;
             float inside = Mathf.Min(Mathf.Max(q.x, q.y), 0f);
             return 4f - (outside + inside);
+        }
+
+        // ring with a quarter missing, the gap is what makes the spin read
+        private static float SpinnerDistance(Vector2 point)
+        {
+            Vector2 d = point - new Vector2(31.5f, 31.5f);
+            float ring = 3.5f - Mathf.Abs(d.magnitude - 22f);
+
+            float angle = Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg;
+            if (angle < 0f) angle += 360f;
+            float sweep = angle <= 270f
+                ? Mathf.Min(angle, 270f - angle)
+                : -Mathf.Min(angle - 270f, 360f - angle);
+
+            return Mathf.Min(ring, sweep);
         }
 
         // signed distance to the line a->b, positive on the winding side
