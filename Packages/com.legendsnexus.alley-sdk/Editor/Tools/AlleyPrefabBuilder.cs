@@ -23,8 +23,15 @@ namespace LegendsNexus.Alley.Editor
 
         private static readonly Color32 Pink = new Color32(255, 0, 122, 255);
         private static readonly Color32 Purple = new Color32(107, 70, 193, 255);
+        private static readonly Color32 Teal = new Color32(31, 209, 237, 255);
+        private static readonly Color32 Gold = new Color32(255, 215, 0, 255);
         private static readonly Color32 Magenta = new Color32(186, 24, 156, 255);
         private static readonly Color32 CardDark = new Color32(16, 18, 22, 250);
+        private static readonly Color32 CardFill = new Color32(13, 14, 17, 250);
+        private static readonly Color32 RowIdle = new Color32(20, 22, 26, 255);
+        private static readonly Color32 Line = new Color32(42, 45, 51, 255);
+        private static readonly Color32 TextDim = new Color32(154, 160, 166, 255);
+        private static readonly Color32 LabelIdle = new Color32(214, 217, 222, 255);
 
         // sketch's join group art is three 1920x1080 layers sharing one canvas,
         // so everything below is in that pixel space. 0.0005 lands the card at
@@ -49,6 +56,12 @@ namespace LegendsNexus.Alley.Editor
         // 16:9 booth screen, creators can scale the root if they want it bigger
         private const float ScreenWidth = 1.6f;
         private const float ScreenHeight = 0.9f;
+
+        // control bar canvas, sized so it ends up exactly as wide as the screen
+        private const float BarWidth = 1024f;
+        private const float BarHeight = 160f;
+        private const float BarInner = BarWidth - 8f;
+        private const float RowY = -6f;
 
         // just the avatar picture the client draws, no frame around it. root
         // pivot sits at the center of the picture with the placement anchor
@@ -97,13 +110,12 @@ namespace LegendsNexus.Alley.Editor
             EnsureFolders();
             EnsureProgramAsset();
             Sprite disc = EnsureCircleSprite("AlleyDisc", false);
-            Sprite ring = EnsureCircleSprite("AlleyRing", true);
             Sprite rounded = EnsureShapeSprite("AlleyRounded", 64, RoundedSpriteDistance, new Vector4(24f, 24f, 24f, 24f));
             Sprite play = EnsureShapeSprite("AlleyPlayIcon", 64, PlayIconDistance, Vector4.zero);
             Sprite pause = EnsureShapeSprite("AlleyPauseIcon", 64, PauseIconDistance, Vector4.zero);
             BuildGroupButton(disc, rounded);
             BuildAvatarPedestal();
-            BuildVideoPlayer(disc, ring, rounded, play, pause);
+            BuildVideoPlayer(play, pause);
             AssetDatabase.SaveAssets();
             Debug.Log("[LegendsAlley] Bundled prefabs rebuilt.");
         }
@@ -286,7 +298,7 @@ namespace LegendsNexus.Alley.Editor
         // proximity driven booth video player: avpro engine so youtube links and
         // vrcdn streams both work, a screen quad, a short range speaker, and a
         // control bar with play/pause, volume, and a status readout
-        private static void BuildVideoPlayer(Sprite disc, Sprite ring, Sprite rounded, Sprite playIcon, Sprite pauseIcon)
+        private static void BuildVideoPlayer(Sprite playIcon, Sprite pauseIcon)
         {
             var root = new GameObject("Alley Video Player");
             try
@@ -343,37 +355,53 @@ namespace LegendsNexus.Alley.Editor
                 spatial.Far = 4f;
                 spatial.UseAudioSourceVolumeCurve = true;
 
-                Transform bar = MakeWorldCanvas(root.transform, "Control Bar", new Vector2(1024f, 160f), 0.0015625f,
+                Transform bar = MakeWorldCanvas(root.transform, "Control Bar", new Vector2(BarWidth, BarHeight), 0.0015625f,
                     new Vector3(0f, -(ScreenHeight * 0.5f) - 0.15f, 0f));
                 bar.gameObject.AddComponent<GraphicRaycaster>();
                 bar.gameObject.AddComponent<VRCUiShape>();
 
-                Image backdrop = AddImage(bar, "Backdrop", rounded, CardDark, new Vector2(1024f, 160f));
-                backdrop.type = Image.Type.Sliced;
-                backdrop.pixelsPerUnitMultiplier = 0.55f;
+                // hairline edge with the card sitting inside it, same trick the
+                // event sign uses to fake a border without an outline component
+                AddImage(bar, "Edge", null, Line, new Vector2(BarWidth, BarHeight));
+                AddImage(bar, "Fill", null, CardFill, new Vector2(BarInner, BarHeight - 8f));
+                AddAccentRun(bar, BarInner, 6f, (BarHeight - 8f) * 0.5f - 3f);
 
-                // play/pause, mirrors the group button look
+                // play/pause, square with a pink edge like the sign cards
                 var buttonRoot = new GameObject("Play Button", typeof(RectTransform));
                 buttonRoot.transform.SetParent(bar, false);
-                ((RectTransform)buttonRoot.transform).anchoredPosition = new Vector2(-420f, 0f);
-                ((RectTransform)buttonRoot.transform).sizeDelta = new Vector2(120f, 120f);
-                AddImage(buttonRoot.transform, "Ring", ring, Pink, new Vector2(120f, 120f));
-                Image face = AddImage(buttonRoot.transform, "Face", disc, new Color32(30, 33, 41, 255), new Vector2(104f, 104f));
+                ((RectTransform)buttonRoot.transform).anchoredPosition = new Vector2(-428f, RowY);
+                ((RectTransform)buttonRoot.transform).sizeDelta = new Vector2(108f, 108f);
+                AddImage(buttonRoot.transform, "Edge", null, Pink, new Vector2(108f, 108f));
+                Image face = AddImage(buttonRoot.transform, "Face", null, RowIdle, new Vector2(98f, 98f));
                 face.raycastTarget = true;
                 // the sprite itself already sits a touch right of center so the
                 // triangle reads centered, no extra offset needed here
-                Image playImage = AddImage(face.transform, "Play Icon", playIcon, Color.white, new Vector2(52f, 52f));
-                Image pauseImage = AddImage(face.transform, "Pause Icon", pauseIcon, Color.white, new Vector2(52f, 52f));
+                Image playImage = AddImage(face.transform, "Play Icon", playIcon, Color.white, new Vector2(46f, 46f));
+                Image pauseImage = AddImage(face.transform, "Pause Icon", pauseIcon, Color.white, new Vector2(46f, 46f));
                 pauseImage.gameObject.SetActive(false);
                 var button = buttonRoot.AddComponent<Button>();
                 button.targetGraphic = face;
                 UnityEventTools.AddStringPersistentListener(button.onClick, backing.SendCustomEvent, "OnPlayPauseClick");
 
-                Slider volume = AddVolumeSlider(bar, rounded, disc, new Vector2(-90f, 0f), new Vector2(420f, 90f));
+                TMP_Text volumeTag = AddLabel(bar, "Volume Tag", "VOLUME", new Vector2(200f, 30f), 16f, 22f, TextDim);
+                volumeTag.alignment = TextAlignmentOptions.Left;
+                ((RectTransform)volumeTag.transform).anchoredPosition = new Vector2(-234f, RowY + 34f);
+
+                Slider volume = AddVolumeSlider(bar, new Vector2(-96f, RowY - 8f), new Vector2(476f, 60f));
                 UnityEventTools.AddStringPersistentListener(volume.onValueChanged, backing.SendCustomEvent, "OnVolumeChanged");
 
-                TMP_Text status = AddLabel(bar, "Status", "READY", new Vector2(320f, 110f), 24f, 40f, new Color32(183, 190, 205, 255));
-                ((RectTransform)status.transform).anchoredPosition = new Vector2(315f, 0f);
+                AddImage(bar, "Divider", null, Line, new Vector2(2f, 84f))
+                    .rectTransform.anchoredPosition = new Vector2(168f, RowY);
+
+                TMP_Text statusTag = AddLabel(bar, "Status Tag", "STATUS", new Vector2(300f, 30f), 16f, 22f, TextDim);
+                statusTag.alignment = TextAlignmentOptions.Right;
+                ((RectTransform)statusTag.transform).anchoredPosition = new Vector2(332f, RowY + 34f);
+
+                TMP_Text status = AddLabel(bar, "Status", "READY", new Vector2(300f, 60f), 22f, 40f, LabelIdle);
+                status.alignment = TextAlignmentOptions.Right;
+                // shrink long states instead of letting them wrap to two lines
+                status.enableWordWrapping = false;
+                ((RectTransform)status.transform).anchoredPosition = new Vector2(332f, RowY - 10f);
 
                 proxy.videoPlayer = avpro;
                 proxy.audioSource = audio;
@@ -393,8 +421,25 @@ namespace LegendsNexus.Alley.Editor
             }
         }
 
-        // slider built by hand so the sprites and colors match the rest of the kit
-        private static Slider AddVolumeSlider(Transform parent, Sprite rounded, Sprite disc, Vector2 position, Vector2 size)
+        // the four brand colours in their usual run, pink leads and gold closes
+        private static void AddAccentRun(Transform parent, float width, float height, float y)
+        {
+            var colours = new[] { Pink, Purple, Teal, Gold };
+            var shares = new[] { 0.46f, 0.20f, 0.17f, 0.17f };
+            var names = new[] { "Accent Pink", "Accent Purple", "Accent Teal", "Accent Gold" };
+
+            float x = -width * 0.5f;
+            for (int i = 0; i < colours.Length; i++)
+            {
+                float run = width * shares[i];
+                AddImage(parent, names[i], null, colours[i], new Vector2(run, height))
+                    .rectTransform.anchoredPosition = new Vector2(x + run * 0.5f, y);
+                x += run;
+            }
+        }
+
+        // flat rails and a chunky tick handle, no rounded caps anywhere
+        private static Slider AddVolumeSlider(Transform parent, Vector2 position, Vector2 size)
         {
             var go = new GameObject("Volume", typeof(RectTransform));
             go.transform.SetParent(parent, false);
@@ -402,43 +447,39 @@ namespace LegendsNexus.Alley.Editor
             rect.anchoredPosition = position;
             rect.sizeDelta = size;
 
-            Image rail = AddImage(go.transform, "Rail", rounded, new Color32(42, 46, 56, 255), Vector2.zero);
-            rail.type = Image.Type.Sliced;
-            rail.pixelsPerUnitMultiplier = 3f;
             // clicking anywhere on the track jumps the handle there
+            Image rail = AddImage(go.transform, "Rail", null, Line, Vector2.zero);
             rail.raycastTarget = true;
             var railRect = (RectTransform)rail.transform;
             railRect.anchorMin = new Vector2(0f, 0.5f);
             railRect.anchorMax = new Vector2(1f, 0.5f);
-            railRect.sizeDelta = new Vector2(0f, 18f);
+            railRect.sizeDelta = new Vector2(0f, 8f);
 
             var fillArea = new GameObject("Fill Area", typeof(RectTransform));
             fillArea.transform.SetParent(go.transform, false);
             var fillAreaRect = (RectTransform)fillArea.transform;
             fillAreaRect.anchorMin = new Vector2(0f, 0.5f);
             fillAreaRect.anchorMax = new Vector2(1f, 0.5f);
-            fillAreaRect.sizeDelta = new Vector2(-24f, 18f);
+            fillAreaRect.sizeDelta = new Vector2(-14f, 8f);
 
-            Image fill = AddImage(fillArea.transform, "Fill", rounded, Pink, Vector2.zero);
-            fill.type = Image.Type.Sliced;
-            fill.pixelsPerUnitMultiplier = 3f;
+            Image fill = AddImage(fillArea.transform, "Fill", null, Pink, Vector2.zero);
             var fillRect = (RectTransform)fill.transform;
             fillRect.anchorMin = Vector2.zero;
             fillRect.anchorMax = Vector2.one;
-            fillRect.sizeDelta = new Vector2(12f, 0f);
+            fillRect.sizeDelta = new Vector2(14f, 0f);
 
             var handleArea = new GameObject("Handle Slide Area", typeof(RectTransform));
             handleArea.transform.SetParent(go.transform, false);
             var handleAreaRect = (RectTransform)handleArea.transform;
             handleAreaRect.anchorMin = new Vector2(0f, 0.5f);
             handleAreaRect.anchorMax = new Vector2(1f, 0.5f);
-            handleAreaRect.sizeDelta = new Vector2(-44f, 44f);
+            handleAreaRect.sizeDelta = new Vector2(-14f, 48f);
 
-            Image handle = AddImage(handleArea.transform, "Handle", disc, Color.white, new Vector2(44f, 44f));
+            Image handle = AddImage(handleArea.transform, "Handle", null, Color.white, new Vector2(14f, 48f));
             handle.raycastTarget = true;
-            // the slider stretches the handle across the slide area vertically,
-            // keep the width fixed so it stays a circle
-            ((RectTransform)handle.transform).sizeDelta = new Vector2(44f, 0f);
+            // the slider stretches the handle down the slide area, keep the width
+            // fixed so it stays a tick and not a bar
+            ((RectTransform)handle.transform).sizeDelta = new Vector2(14f, 0f);
 
             var slider = go.AddComponent<Slider>();
             slider.fillRect = (RectTransform)fill.transform;
