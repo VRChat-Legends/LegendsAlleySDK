@@ -477,6 +477,15 @@ namespace LegendsNexus.Alley.Editor
 
         private static void CollectBlockers(GameObject root, BoothReport report)
         {
+            // a portal without a valid world id shows up ingame as a broken portal
+            foreach (VRCPortalMarker portal in root.GetComponentsInChildren<VRCPortalMarker>(true))
+            {
+                if (!AlleyInspectorKit.IsVrcId(portal.roomId, "wrld_"))
+                {
+                    report.Blockers.Add($"The portal on \"{portal.gameObject.name}\" has no valid world ID. Paste the wrld_... ID from the VRChat website or remove the portal.");
+                }
+            }
+
             int missingScripts = 0;
             string missingOn = null;
             var missingHosts = new List<Object>();

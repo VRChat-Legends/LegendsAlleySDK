@@ -10,6 +10,7 @@ namespace LegendsNexus.Alley.Editor
         private const string AvatarPedestal = AlleyConfig.PackageRoot + "/Runtime/Prefabs/Alley Avatar Pedestal.prefab";
         private const string VideoPlayer = AlleyConfig.PackageRoot + "/Runtime/Prefabs/Alley Video Player.prefab";
         private const string Slideshow = AlleyConfig.PackageRoot + "/Runtime/Prefabs/Alley Slideshow.prefab";
+        private const string Portal = AlleyConfig.PackageRoot + "/Runtime/Prefabs/Alley Portal.prefab";
 
         [MenuItem("GameObject/Legends Alley/Group Button", false, 10)]
         private static void SpawnGroupButton(MenuCommand command)
@@ -36,6 +37,13 @@ namespace LegendsNexus.Alley.Editor
         private static void SpawnSlideshow(MenuCommand command)
         {
             Spawn(Slideshow, command, new Vector3(0f, 1.5f, 0f));
+        }
+
+        [MenuItem("GameObject/Legends Alley/Portal", false, 14)]
+        private static void SpawnPortal(MenuCommand command)
+        {
+            // portal graphic stands on the marker, keep it on the floor
+            Spawn(Portal, command, Vector3.zero);
         }
 
         private static void Spawn(string path, MenuCommand command, Vector3 offset)

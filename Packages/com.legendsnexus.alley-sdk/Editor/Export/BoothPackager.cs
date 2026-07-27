@@ -99,6 +99,12 @@ namespace LegendsNexus.Alley.Editor
                 UnityEngine.Object.DestroyImmediate(helper);
             }
 
+            // same deal, the VRCPortalMarker underneath carries the world id
+            foreach (AlleyPortal helper in root.GetComponentsInChildren<AlleyPortal>(true))
+            {
+                UnityEngine.Object.DestroyImmediate(helper);
+            }
+
             // usharp only syncs proxies to the backing udon behaviours on scene
             // save and world builds, neither of which happen during our export
             foreach (UdonSharp.UdonSharpBehaviour usharp in root.GetComponentsInChildren<UdonSharp.UdonSharpBehaviour>(true))

@@ -101,6 +101,22 @@ namespace LegendsNexus.Alley.Editor
             }
         }
 
+        // just the marker, vrchat spawns the actual portal graphic ingame
+        private static void BuildPortal()
+        {
+            var root = new GameObject("Alley Portal");
+            try
+            {
+                root.AddComponent<AlleyPortal>();
+                root.AddComponent<VRCPortalMarker>();
+                SavePrefab(root, "Alley Portal");
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
         [MenuItem("Tools/Legends Alley/Dev/Rebuild Bundled Prefabs")]
         public static void RebuildAll()
         {
@@ -113,6 +129,7 @@ namespace LegendsNexus.Alley.Editor
             Sprite spinner = EnsureShapeSprite("AlleySpinner", 64, SpinnerDistance, Vector4.zero);
             BuildGroupButton(disc, rounded);
             BuildAvatarPedestal();
+            BuildPortal();
             BuildVideoPlayer(play, pause, spinner);
             BuildSlideshow(play);
             AssetDatabase.SaveAssets();
