@@ -109,7 +109,7 @@ Two things to know: the number of slides is capped per event (the inspector show
 
 ### Portal
 
-Paste your world ID (`wrld_...`, from the world's page on the VRChat website) and keep the world public. In game a real VRChat portal stands where the gizmo shows, facing the same way as the object. The checker blocks uploads with an empty or malformed world ID, a broken portal in the event world helps nobody.
+Paste your world ID (`wrld_...`, from the world's page on the VRChat website) and keep the world public. In game a real VRChat portal stands where the gizmo shows, facing the same way as the object, and walking in takes people straight to your world. The checker blocks uploads with an empty or malformed world ID, a broken portal in the event world helps nobody.
 
 ### Pickup Reset
 
@@ -194,7 +194,7 @@ The board only knows what the last bake wrote into it. Change the image list, th
 <details>
 <summary><b>Walking into my portal does nothing.</b></summary>
 
-Portals are a bit finicky in VRChat right now. Walk-in can silently fail depending on the instance's portal settings and the client build, and portals never work in local Build and Test. People can always open their menu and click the portal to join through its world page, that path is reliable. Also make sure the target world is public.
+Portals only work in uploaded worlds, they never fire in local Build and Test. If it still won't open in an uploaded world, double check the world ID and make sure the target world is public.
 
 </details>
 

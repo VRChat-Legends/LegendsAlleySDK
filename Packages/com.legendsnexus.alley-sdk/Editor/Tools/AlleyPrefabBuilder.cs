@@ -101,13 +101,18 @@ namespace LegendsNexus.Alley.Editor
             }
         }
 
-        // just the marker, vrchat spawns the actual portal graphic ingame
+        // marker plus the trigger box that catches people walking in, same
+        // dims as vrchats own sample prefab. the portal graphic spawns ingame
         private static void BuildPortal()
         {
             var root = new GameObject("Alley Portal");
             try
             {
                 root.AddComponent<AlleyPortal>();
+                var trigger = root.AddComponent<BoxCollider>();
+                trigger.isTrigger = true;
+                trigger.size = new Vector3(1f, 2f, 1f);
+                trigger.center = new Vector3(0f, 1f, 0f);
                 root.AddComponent<VRCPortalMarker>();
                 SavePrefab(root, "Alley Portal");
             }

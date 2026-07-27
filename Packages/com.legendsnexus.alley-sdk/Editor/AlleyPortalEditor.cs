@@ -57,6 +57,15 @@ namespace LegendsNexus.Alley.Editor
                 return;
             }
 
+            var collider = Helper.GetComponent<Collider>();
+            if (collider == null || !collider.isTrigger)
+            {
+                AlleyInspectorKit.SetStatus(status,
+                    "Walking in needs a trigger collider on this object. The bundled prefab comes with one, if you built this by hand add a Box Collider and turn on Is Trigger.",
+                    "warn");
+                return;
+            }
+
             string id = CurrentId;
             if (string.IsNullOrEmpty(id))
             {
@@ -73,7 +82,7 @@ namespace LegendsNexus.Alley.Editor
             else
             {
                 AlleyInspectorKit.SetStatus(status,
-                    "In game the portal stands right here facing the same way as this object. Keep the world public. Heads up: portals can be finicky in VRChat right now, walking in may do nothing depending on the instance and client, but people can always open their menu and click the portal to join. They never work in local Build and Test.", null);
+                    "In game the portal stands right here, facing the same way as this object. Walk in to join. Keep the world public, and note portals only work in uploaded worlds, not in local Build and Test.", null);
             }
         }
 
