@@ -25,10 +25,15 @@ namespace LegendsNexus.Alley.Editor
             "Particles/",
             "Legacy Shaders/",
             "Mobile/",
-            "VRChat/Mobile/",
             "z3y/",
             "Filamented/",
         };
+
+        // no lightmap support, booths using them turn black once the event world bakes
+        public static bool IsMobileTrap(string shaderName)
+        {
+            return !string.IsNullOrEmpty(shaderName) && shaderName.StartsWith("VRChat/Mobile/", System.StringComparison.Ordinal);
+        }
 
         public static bool IsAllowed(string shaderName)
         {

@@ -456,7 +456,9 @@ namespace LegendsNexus.Alley.Editor
                     shaders.Add(shaderName);
                     if (!AlleyShaderRules.IsAllowed(shaderName) && flagged.Add(shaderName))
                     {
-                        report.Blockers.Add($"Shader \"{shaderName}\" is not on the event whitelist. Use {AlleyShaderRules.Description}.");
+                        report.Blockers.Add(AlleyShaderRules.IsMobileTrap(shaderName)
+                            ? $"Shader \"{shaderName}\" is blocked: the VRChat Mobile shaders skip lightmaps, so your booth would go black in the baked event world. Use {AlleyShaderRules.Description}."
+                            : $"Shader \"{shaderName}\" is not on the event whitelist. Use {AlleyShaderRules.Description}.");
                     }
                 }
             }
