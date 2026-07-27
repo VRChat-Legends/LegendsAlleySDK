@@ -23,6 +23,7 @@ namespace LegendsNexus.Alley.Editor
 
             Label status = AlleyInspectorKit.MakeStatus(card);
             UpdateStatus(status);
+            root.TrackSerializedObjectValue(serializedObject, _ => UpdateStatus(status));
 
             var bake = new Button(() => Bake(status)) { text = "BAKE SLIDES" };
             bake.AddToClassList("alley-insp-button-ghost");
@@ -48,6 +49,17 @@ namespace LegendsNexus.Alley.Editor
             {
                 AlleyInspectorKit.SetStatus(status,
                     $"Drop your images in, then press bake. This event allows up to {max} slides.", "empty");
+                return;
+            }
+
+            // the board only knows what the last bake wrote into it
+            var show = source.GetComponent<AlleySlideshow>();
+            int usable = AlleySlideshowBaker.CountUsable(source);
+            if (show != null && usable != show.slideCount)
+            {
+                AlleyInspectorKit.SetStatus(status,
+                    $"The list has {usable} image{(usable == 1 ? "" : "s")} but the board still shows {show.slideCount}. Press BAKE SLIDES to update it.",
+                    "warn");
                 return;
             }
 

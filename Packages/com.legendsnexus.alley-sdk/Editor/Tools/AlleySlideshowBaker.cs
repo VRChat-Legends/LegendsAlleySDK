@@ -90,6 +90,12 @@ namespace LegendsNexus.Alley.Editor
             return limit > 0 ? limit : 12;
         }
 
+        // what a bake would keep right now, lets the inspectors flag a stale bake
+        public static int CountUsable(AlleySlideshowSource source)
+        {
+            return source == null ? 0 : Clean(source.slides).Length;
+        }
+
         private static Texture2D[] Clean(Texture2D[] slides)
         {
             if (slides == null) return new Texture2D[0];
