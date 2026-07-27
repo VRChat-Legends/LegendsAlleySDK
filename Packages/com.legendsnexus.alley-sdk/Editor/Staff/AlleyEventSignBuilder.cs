@@ -28,7 +28,10 @@ namespace LegendsNexus.Alley.Editor
         private const float PanelHeight = 2.5f;
         private const float PanelCenterY = 1.78f;
 
-        [MenuItem("GameObject/Legends Alley/Event Info Wall", false, 14)]
+        [MenuItem("GameObject/Legends Alley/Staff/Event Info Wall", true)]
+        private static bool ValidateSpawnSign() => AlleyStaffOnly.Allowed;
+
+        [MenuItem("GameObject/Legends Alley/Staff/Event Info Wall", false, 41)]
         private static void SpawnSign(MenuCommand command)
         {
             if (AlleyStaffOnly.Blocked("The event info wall")) return;

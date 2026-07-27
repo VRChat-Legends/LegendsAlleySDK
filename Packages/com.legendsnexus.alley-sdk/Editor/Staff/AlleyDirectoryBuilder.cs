@@ -35,7 +35,11 @@ namespace LegendsNexus.Alley.Editor
         private static readonly Color32 TextDim = new Color32(154, 160, 166, 255);
         private static readonly Color32 LabelIdle = new Color32(214, 217, 222, 255);
 
-        [MenuItem("GameObject/Legends Alley/Booth Directory Board", false, 13)]
+        // greyed out for non staff, the dialog in the body is just the backstop
+        [MenuItem("GameObject/Legends Alley/Staff/Booth Directory Board", true)]
+        private static bool ValidateSpawnBoard() => AlleyStaffOnly.Allowed;
+
+        [MenuItem("GameObject/Legends Alley/Staff/Booth Directory Board", false, 40)]
         private static void SpawnBoard(MenuCommand command)
         {
             if (AlleyStaffOnly.Blocked("The booth directory board")) return;
@@ -46,6 +50,9 @@ namespace LegendsNexus.Alley.Editor
             Selection.activeGameObject = board;
             Rebuild(board.GetComponent<AlleyDirectoryBoard>(), msg => Debug.Log("[LegendsAlley] " + msg));
         }
+
+        [MenuItem("Tools/Legends Alley/Rebuild Booth Directories", true)]
+        private static bool ValidateRebuildMenu() => AlleyStaffOnly.Allowed;
 
         [MenuItem("Tools/Legends Alley/Rebuild Booth Directories")]
         private static void RebuildMenu()
