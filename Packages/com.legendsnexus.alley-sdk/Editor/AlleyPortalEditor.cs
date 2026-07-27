@@ -73,7 +73,7 @@ namespace LegendsNexus.Alley.Editor
             else
             {
                 AlleyInspectorKit.SetStatus(status,
-                    "In game the portal stands right here facing the same way as this object, and walking into it sends people to your world. Keep it public.", null);
+                    "In game the portal stands right here facing the same way as this object, and walking into it sends people to your world. Keep it public. Heads up: portals are dead in local Build and Test instances, they only work in uploaded worlds.", null);
             }
         }
 
