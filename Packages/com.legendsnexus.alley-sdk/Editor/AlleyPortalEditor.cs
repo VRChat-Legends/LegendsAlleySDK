@@ -73,7 +73,7 @@ namespace LegendsNexus.Alley.Editor
             else
             {
                 AlleyInspectorKit.SetStatus(status,
-                    "In game the portal stands right here facing the same way as this object, and walking into it sends people to your world. Keep it public. Heads up: portals are dead in local Build and Test instances, they only work in uploaded worlds.", null);
+                    "In game the portal stands right here facing the same way as this object. Keep the world public. Heads up: portals can be finicky in VRChat right now, walking in may do nothing depending on the instance and client, but people can always open their menu and click the portal to join. They never work in local Build and Test.", null);
             }
         }
 
