@@ -65,6 +65,11 @@ namespace LegendsNexus.Alley.Editor
             ImportAtlas(path, atlasSize);
 
             Material material = EnsureMaterial(folder, AssetDatabase.LoadAssetAtPath<Texture2D>(path));
+            // window the material onto slide one so the board previews a single
+            // slide in the editor and on the first ingame frame, not the whole atlas
+            material.SetTextureScale("_MainTex", new Vector2(1f / columns, 1f / rows));
+            material.SetTextureOffset("_MainTex", new Vector2(0f, 1f - 1f / rows));
+            EditorUtility.SetDirty(material);
             if (show.target != null)
             {
                 show.target.sharedMaterial = material;
@@ -74,6 +79,11 @@ namespace LegendsNexus.Alley.Editor
             show.slideCount = slides.Length;
             show.columns = columns;
             show.rows = rows;
+            if (show.counterLabel != null)
+            {
+                show.counterLabel.text = "1 / " + slides.Length;
+                EditorUtility.SetDirty(show.counterLabel);
+            }
             source.bakedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
             EditorUtility.SetDirty(show);
             EditorUtility.SetDirty(source);
