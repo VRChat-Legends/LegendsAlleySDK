@@ -13,6 +13,9 @@ namespace LegendsNexus.Alley.Editor
             "Standard (Specular setup)",
             // vrchat sdk's own avpro screen shader, the bundled video player uses it
             "Video/RealtimeEmissiveGamma",
+            // the one mobile shader that lightmaps properly, the rest stay banned
+            "VRChat/Mobile/Toon Standard",
+            "VRChat/Mobile/Toon Standard (Outline)",
         };
 
         private static readonly string[] AllowedPrefixes =

@@ -131,7 +131,7 @@ Point it at your Animator, give it a trigger name (or a state name like `Base La
 - The kit prefabs don't eat your budgets. Their insides are excluded from the generic counts and show up on their own rows instead (video players, group buttons, pedestals, portals), each with its own event limit.
 - The **Legends Booth** component has an **Isolate booth audio** toggle. Turn it on and the upload clamps every sound's range so your audio fades out at your booth's edge. Player voices are never affected.
 - ProBuilder geometry is welcome. It gets combined and atlased automatically at upload time.
-- Shaders are limited to an event whitelist: Standard, z3y, Filamented, lilToon, unlit, legacy, TMP, UI, and particle shaders. The checker names any material that's off the list. The VRChat Mobile shaders are deliberately blocked, they skip lightmaps and would leave your booth pitch black once the event world bakes its lighting.
+- Shaders are limited to an event whitelist: Standard, z3y, Filamented, lilToon, unlit, legacy, TMP, UI, and particle shaders. The checker names any material that's off the list. The VRChat Mobile shaders are deliberately blocked, they skip lightmaps and would leave your booth pitch black once the event world bakes its lighting. The one exception is VRChat Mobile Toon Standard, which lightmaps fine and is allowed.
 
 ## FAQ
 
