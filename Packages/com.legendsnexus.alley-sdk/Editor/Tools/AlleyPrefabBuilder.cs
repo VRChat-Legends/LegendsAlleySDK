@@ -174,6 +174,8 @@ namespace LegendsNexus.Alley.Editor
             EnsureProgram("AlleyPickupReset");
             EnsureProgram("AlleyTeleportButton");
             EnsureProgram("AlleySlideshow");
+            EnsureProgram("AlleyWorldMenu");
+            EnsureProgram("AlleyPerformanceMode");
         }
 
         private static void EnsureProgram(string className)
@@ -540,7 +542,7 @@ namespace LegendsNexus.Alley.Editor
         }
 
         // the four brand colours in their usual run, pink leads and gold closes
-        private static void AddAccentRun(Transform parent, float width, float height, float y)
+        internal static void AddAccentRun(Transform parent, float width, float height, float y)
         {
             var colours = new[] { Pink, Purple, Teal, Gold };
             var shares = new[] { 0.46f, 0.20f, 0.17f, 0.17f };
@@ -557,7 +559,7 @@ namespace LegendsNexus.Alley.Editor
         }
 
         // flat rails and a chunky tick handle, no rounded caps anywhere
-        private static Slider AddVolumeSlider(Transform parent, Vector2 position, Vector2 size)
+        internal static Slider AddVolumeSlider(Transform parent, Vector2 position, Vector2 size)
         {
             var go = new GameObject("Volume", typeof(RectTransform));
             go.transform.SetParent(parent, false);
@@ -773,7 +775,7 @@ namespace LegendsNexus.Alley.Editor
         }
 
         // world space canvas turned to face the booth front (+Z of the root)
-        private static Transform MakeWorldCanvas(Transform parent, string name, Vector2 size, float scale, Vector3 position)
+        internal static Transform MakeWorldCanvas(Transform parent, string name, Vector2 size, float scale, Vector3 position)
         {
             var canvasGo = new GameObject(name, typeof(RectTransform));
             canvasGo.transform.SetParent(parent, false);
@@ -786,7 +788,7 @@ namespace LegendsNexus.Alley.Editor
             return canvasGo.transform;
         }
 
-        private static Image AddImage(Transform parent, string name, Sprite sprite, Color color, Vector2 size)
+        internal static Image AddImage(Transform parent, string name, Sprite sprite, Color color, Vector2 size)
         {
             var go = new GameObject(name, typeof(RectTransform));
             go.transform.SetParent(parent, false);
@@ -798,7 +800,7 @@ namespace LegendsNexus.Alley.Editor
             return image;
         }
 
-        private static TMP_Text AddLabel(Transform parent, string name, string text, Vector2 size, float minSize, float maxSize, Color color)
+        internal static TMP_Text AddLabel(Transform parent, string name, string text, Vector2 size, float minSize, float maxSize, Color color)
         {
             var go = new GameObject(name, typeof(RectTransform));
             go.transform.SetParent(parent, false);

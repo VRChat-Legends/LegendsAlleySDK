@@ -15,6 +15,7 @@ namespace LegendsNexus.Alley.Editor
     {
         private const string ImpostorNearName = "Booth Impostor";
         private const string ImpostorFarName = "Booth Impostor Far";
+        private const string LodControlName = "Impostor LOD";
         private const int ViewResolution = 256;
         private const int AtlasCells = 4;
         private const int CaptureLayer = 31;
@@ -79,6 +80,8 @@ namespace LegendsNexus.Alley.Editor
                 }
             }
 
+            WirePerformanceMode(plots, log);
+
             if (summary.Baked > 0)
             {
                 AssetDatabase.SaveAssets();
@@ -87,10 +90,66 @@ namespace LegendsNexus.Alley.Editor
             return summary;
         }
 
+        // hands every baked booth to the world menu's performance switch so
+        // visitors can trade booth detail for frames. udon cannot touch
+        // LODGroup, so the switch gets the lod control child plus direct
+        // impostor and renderer references instead. safe when no menu exists
+        private static void WirePerformanceMode(List<BoothLocation> plots, System.Action<string> log)
+        {
+            AlleyPerformanceMode[] modes = Object.FindObjectsOfType<AlleyPerformanceMode>(true);
+            if (modes.Length == 0) return;
+
+            var roots = new List<GameObject>();
+            var controls = new List<GameObject>();
+            var nears = new List<GameObject>();
+            var fars = new List<GameObject>();
+            var reals = new List<Renderer>();
+            var starts = new List<int>();
+            var counts = new List<int>();
+            foreach (BoothLocation plot in plots)
+            {
+                if (!plot.HasBooth) continue;
+                GameObject booth = plot.transform.GetChild(0).gameObject;
+                Transform control = booth.transform.Find(LodControlName);
+                Transform near = booth.transform.Find(ImpostorNearName);
+                Transform far = booth.transform.Find(ImpostorFarName);
+                if (control == null || near == null || far == null) continue;
+
+                roots.Add(booth);
+                controls.Add(control.gameObject);
+                nears.Add(near.gameObject);
+                fars.Add(far.gameObject);
+                starts.Add(reals.Count);
+                int count = 0;
+                foreach (Renderer renderer in booth.GetComponentsInChildren<Renderer>())
+                {
+                    Transform t = renderer.transform;
+                    if (t == near || t == far || t == control || !renderer.enabled) continue;
+                    reals.Add(renderer);
+                    count++;
+                }
+                counts.Add(count);
+            }
+
+            foreach (AlleyPerformanceMode mode in modes)
+            {
+                mode.boothRoots = roots.ToArray();
+                mode.lodControls = controls.ToArray();
+                mode.nearImpostors = nears.ToArray();
+                mode.farImpostors = fars.ToArray();
+                mode.realRenderers = reals.ToArray();
+                mode.realStarts = starts.ToArray();
+                mode.realCounts = counts.ToArray();
+                UdonSharpEditor.UdonSharpEditorUtility.CopyProxyToUdon(mode);
+                UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(mode.gameObject.scene);
+            }
+            log?.Invoke($"Performance switch tracks {roots.Count} booth(s).");
+        }
+
         public static bool Bake(GameObject boothRoot, string plotLabel)
         {
             // re-runs replace whatever the last bake left behind
-            foreach (string name in new[] { ImpostorNearName, ImpostorFarName })
+            foreach (string name in new[] { ImpostorNearName, ImpostorFarName, LodControlName })
             {
                 Transform previous = boothRoot.transform.Find(name);
                 if (previous != null) Object.DestroyImmediate(previous.gameObject);
@@ -136,7 +195,13 @@ namespace LegendsNexus.Alley.Editor
             Renderer nearRenderer = CreateImpostorChild(boothRoot, ImpostorNearName, nearMesh, material);
             Renderer farRenderer = CreateImpostorChild(boothRoot, ImpostorFarName, farMesh, material);
 
-            var group = boothRoot.AddComponent<LODGroup>();
+            // the group lives on its own child so the in world performance
+            // switch can turn lod management off with a plain SetActive, udon
+            // has no access to the LODGroup type itself
+            var controlGo = new GameObject(LodControlName);
+            controlGo.transform.SetParent(boothRoot.transform, false);
+            controlGo.transform.localPosition = Vector3.zero;
+            var group = controlGo.AddComponent<LODGroup>();
             var lods = new[]
             {
                 new LOD(0.5f, renderers.ToArray()),
