@@ -74,6 +74,13 @@ namespace LegendsNexus.Alley.Editor
     }
 
     [Serializable]
+    public class BoothManager
+    {
+        public string discordId;
+        public string username;
+    }
+
+    [Serializable]
     public class CommunityInfo
     {
         public string id;
@@ -87,6 +94,7 @@ namespace LegendsNexus.Alley.Editor
         public string ownerUsername;
         public string managerDiscordId;
         public string managerUsername;
+        public BoothManager[] managers;
         public TeamMember[] teamMembers;
         public bool limitsBypass;
         public bool customShaderPacks;
@@ -100,6 +108,21 @@ namespace LegendsNexus.Alley.Editor
         public CommunityInfo community;
         public bool staff;
         public string role;
+    }
+
+    public static class CommunityInfoExtensions
+    {
+        // servers from before two manager seats only send the single legacy field
+        public static BoothManager[] ManagerSeats(this CommunityInfo community)
+        {
+            if (community == null) return new BoothManager[0];
+            if (community.managers != null && community.managers.Length > 0) return community.managers;
+            if (!string.IsNullOrEmpty(community.managerDiscordId))
+            {
+                return new[] { new BoothManager { discordId = community.managerDiscordId, username = community.managerUsername } };
+            }
+            return new BoothManager[0];
+        }
     }
 
     [Serializable]

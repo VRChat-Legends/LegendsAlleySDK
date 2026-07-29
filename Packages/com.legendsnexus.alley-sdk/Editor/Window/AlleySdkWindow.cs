@@ -955,21 +955,37 @@ namespace LegendsNexus.Alley.Editor
             _logoButton.SetEnabled(isOwner);
 
             _teamOwnerLine.text = "Owner: " + (string.IsNullOrEmpty(community.ownerUsername) ? community.ownerDiscordId : community.ownerUsername);
-            bool hasManager = !string.IsNullOrEmpty(community.managerDiscordId);
-            _teamManagerLine.text = hasManager
-                ? "Booth manager: " + (string.IsNullOrEmpty(community.managerUsername)
-                    ? community.managerDiscordId + " (waiting for their first sign in)"
-                    : community.managerUsername)
-                : "Booth manager: none yet";
+            BoothManager[] seats = community.ManagerSeats();
+            if (seats.Length == 0)
+            {
+                _teamManagerLine.text = "Booth managers: none yet (2 seats free)";
+            }
+            else
+            {
+                var names = new string[seats.Length];
+                for (int i = 0; i < seats.Length; i++)
+                {
+                    names[i] = string.IsNullOrEmpty(seats[i].username)
+                        ? seats[i].discordId + " (waiting for their first sign in)"
+                        : seats[i].username;
+                }
+                _teamManagerLine.text = $"Booth managers ({seats.Length}/2): " + string.Join(", ", names);
+            }
 
             _managerControls.style.display = isOwner ? DisplayStyle.Flex : DisplayStyle.None;
-            _managerAddButton.text = hasManager ? "REPLACE BOOTH MANAGER" : "ADD BOOTH MANAGER";
-            _managerRemoveButton.style.display = isOwner && hasManager ? DisplayStyle.Flex : DisplayStyle.None;
+            _managerAddButton.text = "ADD BOOTH MANAGER";
+            _managerAddButton.SetEnabled(seats.Length < 2);
+            _managerRemoveButton.style.display = isOwner && seats.Length > 0 ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         private async void StartAddManager()
         {
             if (_busy || AlleySession.Community == null) return;
+            if (AlleySession.Community.ManagerSeats().Length >= 2)
+            {
+                SetStatus("Both booth manager seats are taken. Remove one before adding someone else.");
+                return;
+            }
             string discordId = (_managerIdField.value ?? "").Trim();
             if (!System.Text.RegularExpressions.Regex.IsMatch(discordId, @"^\d{5,25}$"))
             {
@@ -1007,14 +1023,25 @@ namespace LegendsNexus.Alley.Editor
         private async void StartRemoveManager()
         {
             if (_busy || AlleySession.Community == null) return;
+            BoothManager[] seats = AlleySession.Community.ManagerSeats();
+            string target = (_managerIdField.value ?? "").Trim();
+            if (seats.Length > 1 && string.IsNullOrEmpty(target))
+            {
+                SetStatus("Two booth managers are set. Type the Discord ID of the one to remove, then press remove again.");
+                return;
+            }
             _busy = true;
             _managerRemoveButton.SetEnabled(false);
             SetTicker(true);
             SetStatus("Removing booth manager...");
             try
             {
-                await AlleyHttp.DeleteJson<OkResponse>("/api/communities/mine/manager", AlleySession.Token);
+                string path = string.IsNullOrEmpty(target)
+                    ? "/api/communities/mine/manager"
+                    : "/api/communities/mine/manager?discordId=" + UnityEngine.Networking.UnityWebRequest.EscapeURL(target);
+                await AlleyHttp.DeleteJson<OkResponse>(path, AlleySession.Token);
                 if (this == null) return;
+                _managerIdField.SetValueWithoutNotify("");
                 await AlleySession.Resume();
                 SetStatus("Booth manager removed. Their access ended immediately.");
             }
