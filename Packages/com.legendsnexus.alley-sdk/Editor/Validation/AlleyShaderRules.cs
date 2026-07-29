@@ -2,10 +2,13 @@ using System.Collections.Generic;
 
 namespace LegendsNexus.Alley.Editor
 {
-    // event shader whitelist, the backend re-checks the same list server side
+    // event shader whitelist, the backend re-checks the same list server side.
+    // staff can grant a community the curated pack prefixes and one exact
+    // custom shader on top, both arrive with the sdk session
     internal static class AlleyShaderRules
     {
         public const string Description = "Standard, z3y, Filamented, lilToon, unlit, legacy, TMP, UI, or particle shaders";
+        public const string PackDescription = "Poiyomi, Mochie, orels1, or Silent";
 
         private static readonly HashSet<string> AllowedExact = new HashSet<string>
         {
@@ -32,6 +35,17 @@ namespace LegendsNexus.Alley.Editor
             "Filamented/",
         };
 
+        // curated third party packs behind the staff toggle, poiyomi ships under
+        // .poiyomi/ on current versions and Poiyomi/ on older ones
+        private static readonly string[] PackPrefixes =
+        {
+            ".poiyomi/",
+            "Poiyomi/",
+            "Mochie/",
+            "orels1/",
+            "Silent/",
+        };
+
         // no lightmap support, booths using them turn black once the event world bakes
         public static bool IsMobileTrap(string shaderName)
         {
@@ -39,6 +53,11 @@ namespace LegendsNexus.Alley.Editor
         }
 
         public static bool IsAllowed(string shaderName)
+        {
+            return IsAllowed(shaderName, false, null);
+        }
+
+        public static bool IsAllowed(string shaderName, bool customPacks, string customShader)
         {
             if (string.IsNullOrEmpty(shaderName)) return false;
             if (AllowedExact.Contains(shaderName)) return true;
@@ -48,6 +67,14 @@ namespace LegendsNexus.Alley.Editor
             {
                 if (shaderName.StartsWith(prefix, System.StringComparison.Ordinal)) return true;
             }
+            if (customPacks)
+            {
+                foreach (string prefix in PackPrefixes)
+                {
+                    if (shaderName.StartsWith(prefix, System.StringComparison.Ordinal)) return true;
+                }
+            }
+            if (!string.IsNullOrEmpty(customShader) && shaderName == customShader) return true;
             return false;
         }
     }

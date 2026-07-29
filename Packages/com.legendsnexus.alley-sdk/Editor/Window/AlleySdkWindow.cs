@@ -1156,7 +1156,8 @@ namespace LegendsNexus.Alley.Editor
                 return;
             }
 
-            _report = BoothAnalyzer.Analyze(booth, AlleySession.SelectedEvent.limits, AlleySession.Community?.limitsBypass ?? false);
+            _report = BoothAnalyzer.Analyze(booth, AlleySession.SelectedEvent.limits, AlleySession.Community?.limitsBypass ?? false,
+                AlleySession.Community?.customShaderPacks ?? false, AlleySession.Community?.customShaderName);
 
             foreach (string blocker in _report.Blockers)
             {

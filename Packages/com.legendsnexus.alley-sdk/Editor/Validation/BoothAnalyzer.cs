@@ -13,7 +13,8 @@ namespace LegendsNexus.Alley.Editor
     // human readable checklist against the selected event limits
     internal static class BoothAnalyzer
     {
-        public static BoothReport Analyze(LegendsBooth booth, EventLimits limits, bool limitsBypass = false)
+        public static BoothReport Analyze(LegendsBooth booth, EventLimits limits, bool limitsBypass = false,
+            bool customShaderPacks = false, string customShaderName = null)
         {
             var report = new BoothReport();
             GameObject root = booth.gameObject;
@@ -119,7 +120,7 @@ namespace LegendsNexus.Alley.Editor
             // probuilder pieces collapse to one renderer with one material at
             // package time, so estimate against what actually ships
             HashSet<Renderer> pbRenderers = ProBuilderBaker.CollectPieceRenderers(root);
-            EstimateRendering(renderers, pbRenderers, stats, report);
+            EstimateRendering(renderers, pbRenderers, stats, report, customShaderPacks, customShaderName);
 
             CollectAssetStats(root, stats, report, offenders);
             CollectBlockers(root, report);
@@ -434,8 +435,10 @@ namespace LegendsNexus.Alley.Editor
 
         // draw calls ~= material slots before batching, set passes ~= unique
         // materials. baked probuilder pieces count as one of each. also collects
-        // the shader list the package will ship and flags off whitelist ones
-        private static void EstimateRendering(Renderer[] renderers, HashSet<Renderer> pbRenderers, BoothStatsPayload stats, BoothReport report)
+        // the shader list the package will ship and flags off whitelist ones,
+        // honoring any staff granted packs or custom shader for this community
+        private static void EstimateRendering(Renderer[] renderers, HashSet<Renderer> pbRenderers, BoothStatsPayload stats, BoothReport report,
+            bool customShaderPacks, string customShaderName)
         {
             int drawCalls = 0;
             var uniqueMaterials = new HashSet<Material>();
@@ -454,11 +457,12 @@ namespace LegendsNexus.Alley.Editor
                     string shaderName = material.shader != null ? material.shader.name : "";
                     if (string.IsNullOrEmpty(shaderName)) continue;
                     shaders.Add(shaderName);
-                    if (!AlleyShaderRules.IsAllowed(shaderName) && flagged.Add(shaderName))
+                    if (!AlleyShaderRules.IsAllowed(shaderName, customShaderPacks, customShaderName) && flagged.Add(shaderName))
                     {
+                        string extras = customShaderPacks ? $", or your unlocked packs ({AlleyShaderRules.PackDescription})" : "";
                         report.Blockers.Add(AlleyShaderRules.IsMobileTrap(shaderName)
                             ? $"Shader \"{shaderName}\" is blocked: the VRChat Mobile shaders skip lightmaps, so your booth would go black in the baked event world. Use {AlleyShaderRules.Description}."
-                            : $"Shader \"{shaderName}\" is not on the event whitelist. Use {AlleyShaderRules.Description}.");
+                            : $"Shader \"{shaderName}\" is not on the event whitelist. Use {AlleyShaderRules.Description}{extras}.");
                     }
                 }
             }

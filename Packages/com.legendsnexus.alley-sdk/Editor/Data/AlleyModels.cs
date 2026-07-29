@@ -89,6 +89,8 @@ namespace LegendsNexus.Alley.Editor
         public string managerUsername;
         public TeamMember[] teamMembers;
         public bool limitsBypass;
+        public bool customShaderPacks;
+        public string customShaderName;
     }
 
     [Serializable]
