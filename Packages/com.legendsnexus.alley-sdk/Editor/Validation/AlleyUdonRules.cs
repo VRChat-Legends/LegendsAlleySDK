@@ -59,6 +59,8 @@ namespace LegendsNexus.Alley.Editor
             "VRCSDKBaseVRCUrl", "VRCUdonUdonBehaviour", "VRCUdonCommonInterfacesIUdonEventReceiver",
             "VRCSDK3ComponentsVRCPickup", "VRCSDK3ComponentsVRCAvatarPedestal",
             "VRCSDK3ComponentsVRCObjectSync",
+            // opens an avatar listing in the players own menu
+            "VRCSDK3ComponentsVRCOpenMenu",
             "VRCSDK3VideoComponentsBaseBaseVRCVideoPlayer",
             "VRCSDK3VideoComponentsAVProVRCAVProVideoPlayer",
             "VRCSDK3VideoComponentsVRCUnityVideoPlayer",
@@ -70,6 +72,9 @@ namespace LegendsNexus.Alley.Editor
             "UnityEngineParticleSystem",
             "UnityEngineUI",
             "TMPro",
+            // creator economy: store pages, listings and product ownership checks.
+            // every call opens the players own menu or reads their purchases
+            "VRCEconomy",
         };
 
         // allowed types that still have members booths must not touch
@@ -122,14 +127,6 @@ namespace LegendsNexus.Alley.Editor
             // pedestal content is reviewed at upload, no swapping it afterwards
             "VRCSDK3ComponentsVRCAvatarPedestal.SwitchAvatar",
         };
-
-        // types where only specific members are allowed instead of the whole type
-        private static readonly Dictionary<string, HashSet<string>> AllowedMembersByType =
-            new Dictionary<string, HashSet<string>>
-            {
-                // group page is fine, purchase prompts and listings are not
-                ["VRCEconomyStore"] = new HashSet<string> { "OpenGroupPage" },
-            };
 
         // scans one behaviour, returns the extern calls that are off the list.
         // unreadable means there is a program but it could not be inspected,
@@ -201,10 +198,6 @@ namespace LegendsNexus.Alley.Editor
             string member = MemberPart(signature);
             if (type.Length == 0 || member.Length == 0) return false;
 
-            if (AllowedMembersByType.TryGetValue(type, out HashSet<string> members))
-            {
-                return members.Contains(member);
-            }
             if (BannedMembers.Contains(type + "." + member)) return false;
 
             if (AllowedTypes.Contains(type)) return true;
