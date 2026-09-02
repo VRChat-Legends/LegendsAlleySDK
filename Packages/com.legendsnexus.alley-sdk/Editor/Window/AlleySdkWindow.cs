@@ -185,7 +185,7 @@ namespace LegendsNexus.Alley.Editor
             _signOutButton.clicked += StartSignOut;
             _refreshButton.clicked += StartRefresh;
             _impostorsButton.clicked += StartMakeImpostors;
-            _checkButton.clicked += RunCheck;
+            _checkButton.clicked += RunCheckWithFreshRules;
             _uploadButton.clicked += StartUpload;
             _staffSyncButton.clicked += StartStaffSync;
             _logoButton.clicked += StartLogoUpload;
@@ -1169,6 +1169,15 @@ namespace LegendsNexus.Alley.Editor
             // works for both scene objects (hierarchy) and assets (project window)
             Selection.objects = alive.ToArray();
             EditorGUIUtility.PingObject(alive[0]);
+        }
+
+        // a pressed Check is the moment someone is waiting on a staff whitelist
+        // change, so pull the latest before analyzing. throttled inside
+        private async void RunCheckWithFreshRules()
+        {
+            await AlleyUdonRules.RefreshFromServer();
+            if (this == null) return;
+            RunCheck();
         }
 
         private void RunCheck()

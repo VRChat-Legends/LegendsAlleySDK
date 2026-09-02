@@ -1,4 +1,7 @@
 using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+using UnityEngine;
 using VRC.Udon;
 using VRC.Udon.Common.Interfaces;
 using VRC.Udon.UAssembly.Disassembler;
@@ -10,9 +13,95 @@ namespace LegendsNexus.Alley.Editor
     // so a reworked kit script or a hand written graph cant reach things booths
     // have no business touching: downloaders, cameras, the scene outside their
     // own objects, other players movement, and so on. default deny, the backend
-    // and staff import rely on the same rules
+    // and staff import rely on the same rules.
+    // the lists compiled in here are the base. staff maintain additions on the
+    // server, fetched at sign in and cached on disk, so the list can grow
+    // without shipping a new sdk and still works offline
     internal static class AlleyUdonRules
     {
+        private static readonly HashSet<string> RemoteAllowedTypes = new HashSet<string>();
+        private static readonly List<string> RemoteAllowedPrefixes = new List<string>();
+        private static readonly HashSet<string> RemoteBannedMembers = new HashSet<string>();
+        private static readonly HashSet<string> RemoteLiftedBans = new HashSet<string>();
+        private static bool _remoteLoaded;
+        private static double _lastFetch = double.NegativeInfinity;
+        private const double RefetchSeconds = 600;
+
+        public static string RemoteUpdatedAt { get; private set; } = "";
+        public static int RemoteEntryCount => RemoteAllowedTypes.Count + RemoteAllowedPrefixes.Count
+            + RemoteBannedMembers.Count + RemoteLiftedBans.Count;
+
+        private static string CachePath => Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "LegendsAlley", "udon-rules.json");
+
+        // pulls the staff list, falling back to whatever was cached last time.
+        // never throws, a dead server just means no new rules today
+        public static async Task RefreshFromServer(bool force = false)
+        {
+            LoadCacheIfNeeded();
+            double now = UnityEditor.EditorApplication.timeSinceStartup;
+            if (!force && now - _lastFetch < RefetchSeconds) return;
+            _lastFetch = now;
+            try
+            {
+                UdonRulesResponse rules = await AlleyHttp.GetJson<UdonRulesResponse>("/api/public/sdk/udon-rules");
+                if (rules == null) return;
+                ApplyRemote(rules);
+                Directory.CreateDirectory(Path.GetDirectoryName(CachePath));
+                File.WriteAllText(CachePath, JsonUtility.ToJson(rules));
+            }
+            catch
+            {
+                // offline or server down, the cached copy stays in force
+            }
+        }
+
+        public static void ApplyRemote(UdonRulesResponse rules)
+        {
+            RemoteAllowedTypes.Clear();
+            RemoteAllowedPrefixes.Clear();
+            RemoteBannedMembers.Clear();
+            RemoteLiftedBans.Clear();
+            if (rules == null) return;
+            AddAll(RemoteAllowedTypes, rules.allowedTypes);
+            AddAll(RemoteBannedMembers, rules.bannedMembers);
+            AddAll(RemoteLiftedBans, rules.liftedBans);
+            if (rules.allowedTypePrefixes != null)
+            {
+                foreach (string prefix in rules.allowedTypePrefixes)
+                {
+                    if (!string.IsNullOrEmpty(prefix)) RemoteAllowedPrefixes.Add(prefix);
+                }
+            }
+            RemoteUpdatedAt = rules.updatedAt ?? "";
+            _remoteLoaded = true;
+        }
+
+        private static void AddAll(HashSet<string> target, string[] entries)
+        {
+            if (entries == null) return;
+            foreach (string entry in entries)
+            {
+                if (!string.IsNullOrEmpty(entry)) target.Add(entry);
+            }
+        }
+
+        private static void LoadCacheIfNeeded()
+        {
+            if (_remoteLoaded) return;
+            _remoteLoaded = true;
+            try
+            {
+                if (!File.Exists(CachePath)) return;
+                ApplyRemote(JsonUtility.FromJson<UdonRulesResponse>(File.ReadAllText(CachePath)));
+            }
+            catch
+            {
+                // unreadable cache behaves like no cache
+            }
+        }
+
         // extern type names are the full type with namespace dots stripped,
         // like UnityEngineTransform or VRCSDKBaseNetworking
         private static readonly HashSet<string> AllowedTypes = new HashSet<string>
@@ -194,14 +283,21 @@ namespace LegendsNexus.Alley.Editor
 
         public static bool IsAllowed(string signature)
         {
+            LoadCacheIfNeeded();
             string type = TypePart(signature);
             string member = MemberPart(signature);
             if (type.Length == 0 || member.Length == 0) return false;
 
-            if (BannedMembers.Contains(type + "." + member)) return false;
+            string full = type + "." + member;
+            bool banned = BannedMembers.Contains(full) || RemoteBannedMembers.Contains(full);
+            if (banned && !RemoteLiftedBans.Contains(full)) return false;
 
-            if (AllowedTypes.Contains(type)) return true;
+            if (AllowedTypes.Contains(type) || RemoteAllowedTypes.Contains(type)) return true;
             foreach (string prefix in AllowedTypePrefixes)
+            {
+                if (type.StartsWith(prefix, System.StringComparison.Ordinal)) return true;
+            }
+            foreach (string prefix in RemoteAllowedPrefixes)
             {
                 if (type.StartsWith(prefix, System.StringComparison.Ordinal)) return true;
             }

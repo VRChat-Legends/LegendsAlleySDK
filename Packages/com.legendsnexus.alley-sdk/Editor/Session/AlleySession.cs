@@ -71,6 +71,7 @@ namespace LegendsNexus.Alley.Editor
                 Role = string.IsNullOrEmpty(me.role) ? "owner" : me.role;
                 Save();
                 await RefreshEvents();
+                await AlleyUdonRules.RefreshFromServer();
                 Changed?.Invoke();
                 return true;
             }
@@ -91,6 +92,7 @@ namespace LegendsNexus.Alley.Editor
             _loaded = true;
             Save();
             await RefreshEvents();
+            await AlleyUdonRules.RefreshFromServer(force: true);
             Changed?.Invoke();
         }
 

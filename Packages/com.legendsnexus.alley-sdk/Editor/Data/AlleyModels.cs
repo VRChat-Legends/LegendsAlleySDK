@@ -66,6 +66,19 @@ namespace LegendsNexus.Alley.Editor
         public AlleyEvent[] events;
     }
 
+    // staff maintained additions to the udon whitelist, layered over the base
+    // list compiled into the sdk so a newly blocked prefab can be unblocked
+    // without a release
+    [Serializable]
+    public class UdonRulesResponse
+    {
+        public string[] allowedTypes;
+        public string[] allowedTypePrefixes;
+        public string[] bannedMembers;
+        public string[] liftedBans;
+        public string updatedAt;
+    }
+
     [Serializable]
     public class TeamMember
     {
