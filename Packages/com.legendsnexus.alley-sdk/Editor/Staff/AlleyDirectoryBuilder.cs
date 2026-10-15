@@ -381,12 +381,13 @@ namespace LegendsNexus.Alley.Editor
             Image headTick = Block(panel.transform, "Head Tick", Teal, new Vector2(10f, 34f));
             Pin((RectTransform)headTick.transform, new Vector2(0f, 1f), new Vector2(24f, -35f));
 
-            // scroll area under the heading
+            // scroll area under the heading, kept clear of the panel's bottom edge
+            // so the bar never hangs past the list
             var scrollGo = new GameObject("Scroll", typeof(RectTransform));
             scrollGo.transform.SetParent(panel.transform, false);
             var scrollRect = (RectTransform)scrollGo.transform;
-            scrollRect.sizeDelta = new Vector2(996f, 954f);
-            scrollRect.anchoredPosition = new Vector2(-8f, -52f);
+            scrollRect.sizeDelta = new Vector2(996f, 930f);
+            scrollRect.anchoredPosition = new Vector2(-8f, -38f);
 
             var viewportGo = new GameObject("Viewport", typeof(RectTransform));
             viewportGo.transform.SetParent(scrollGo.transform, false);
@@ -419,8 +420,8 @@ namespace LegendsNexus.Alley.Editor
             var barGo = new GameObject("Scrollbar", typeof(RectTransform));
             barGo.transform.SetParent(panel.transform, false);
             var barRect = (RectTransform)barGo.transform;
-            barRect.sizeDelta = new Vector2(16f, 954f);
-            barRect.anchoredPosition = new Vector2(500f, -52f);
+            barRect.sizeDelta = new Vector2(16f, 914f);
+            barRect.anchoredPosition = new Vector2(500f, -38f);
             Image track = barGo.AddComponent<Image>();
             track.color = new Color32(24, 26, 31, 255);
 
