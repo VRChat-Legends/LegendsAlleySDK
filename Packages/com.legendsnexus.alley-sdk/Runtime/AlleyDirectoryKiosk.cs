@@ -51,6 +51,9 @@ namespace LegendsNexus.Alley
         [Tooltip("A behaviour exposing requestPosition, requestRotation and BeginTeleport. Left empty the kiosk teleports straight away")]
         public VRC.Udon.UdonBehaviour teleportFx;
 
+        [Tooltip("Optional. The world's path guide, the Path button draws a trail to the booth through it.")]
+        public VRC.Udon.UdonBehaviour pathGuide;
+
         private int _selected = -1;
 
         private void Start()
@@ -110,6 +113,16 @@ namespace LegendsNexus.Alley
                 return;
             }
             player.TeleportTo(target.position, target.rotation);
+        }
+
+        // ui events cannot start with an underscore. a second press on the same booth clears it
+        public void OnPath()
+        {
+            if (pathGuide == null || _selected < 0 || boothTargets == null || _selected >= boothTargets.Length) return;
+            Transform target = boothTargets[_selected];
+            if (target == null) return;
+            pathGuide.SetProgramVariable("requestTarget", target.position);
+            pathGuide.SendCustomEvent("TogglePath");
         }
 
         public void OnJoin()
