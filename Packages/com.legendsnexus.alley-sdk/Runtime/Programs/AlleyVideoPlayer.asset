@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: AlleyVideoPlayer
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 652f3a692bde14a4d8f5a2a795ba4b7c,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 1c896ef6f12af4c46a45fb6b462a9fff,
     type: 2}
   udonAssembly: 
   assemblyError: 

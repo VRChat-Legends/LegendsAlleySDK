@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: AlleyPedestalInteract
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: e7ad753470c7da64d9f42052af6086c0,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 0f9f20a785f6a304d8df2deed8c306e3,
     type: 2}
   udonAssembly: 
   assemblyError: 

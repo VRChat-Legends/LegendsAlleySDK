@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: AlleyGroupButton
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: a14989cbe4e93354390788a85c0faca1,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 73ace3dd133aa704eba3b1f7aacef57e,
     type: 2}
   udonAssembly: 
   assemblyError: 

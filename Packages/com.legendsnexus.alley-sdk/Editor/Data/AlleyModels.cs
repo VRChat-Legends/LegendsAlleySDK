@@ -119,6 +119,8 @@ namespace LegendsNexus.Alley.Editor
     {
         public string token;
         public CommunityInfo community;
+        // every community this account can work on, when the server lists them
+        public CommunityInfo[] communities;
         public bool staff;
         public string role;
     }
@@ -142,6 +144,7 @@ namespace LegendsNexus.Alley.Editor
     public class MeResponse
     {
         public CommunityInfo community;
+        public CommunityInfo[] communities;
         public bool staff;
         public string role;
     }
@@ -297,10 +300,17 @@ namespace LegendsNexus.Alley.Editor
     }
 
     [Serializable]
+    public class SwitchCommunityBody
+    {
+        public string communityId;
+    }
+
+    [Serializable]
     public class SessionFile
     {
         public string token;
         public CommunityInfo community;
+        public CommunityInfo[] communities;
         public string apiBase;
         public bool staff;
         public string role;

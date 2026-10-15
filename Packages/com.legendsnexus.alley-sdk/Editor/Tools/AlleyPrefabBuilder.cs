@@ -176,6 +176,9 @@ namespace LegendsNexus.Alley.Editor
             EnsureProgram("AlleySlideshow");
             EnsureProgram("AlleyWorldMenu");
             EnsureProgram("AlleyPerformanceMode");
+            EnsureProgram("AlleyUiMotion");
+            EnsureProgram("AlleyActionButton");
+            EnsureProgram("AlleyCopyField");
         }
 
         private static void EnsureProgram(string className)
@@ -823,6 +826,8 @@ namespace LegendsNexus.Alley.Editor
         private static void SavePrefab(GameObject root, string name)
         {
             string path = PrefabFolder + "/" + name + ".prefab";
+            // the booth panels share the volumetric look and spring in motion
+            if (name.Contains("Video") || name.Contains("Group") || name.Contains("Slideshow")) AlleyBoothKit.Apply(root);
             PrefabUtility.SaveAsPrefabAsset(root, path, out bool saved);
             if (!saved) Debug.LogError("[LegendsAlley] Failed to save " + path);
         }

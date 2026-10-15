@@ -33,6 +33,8 @@ namespace LegendsNexus.Alley.Editor
             "Mobile/",
             "z3y/",
             "Filamented/",
+            // the sdk's own shaders, like the optimized glass
+            "LegendsAlley/",
         };
 
         // curated third party packs behind the staff toggle, poiyomi ships under

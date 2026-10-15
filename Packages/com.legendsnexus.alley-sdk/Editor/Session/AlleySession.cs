@@ -10,6 +10,10 @@ namespace LegendsNexus.Alley.Editor
     internal static class AlleySession
     {
         public static CommunityInfo Community { get; private set; }
+
+        // everything this account can work on. one entry, or empty on servers
+        // that do not list them, means there is nothing to switch between
+        public static CommunityInfo[] Communities { get; private set; } = Array.Empty<CommunityInfo>();
         public static bool IsStaff { get; private set; }
         // "owner" or "manager", booth managers can upload but not touch the profile
         public static string Role { get; private set; } = "owner";
@@ -49,6 +53,7 @@ namespace LegendsNexus.Alley.Editor
                 if (!string.Equals(saved.apiBase, AlleyConfig.ApiBase, StringComparison.OrdinalIgnoreCase)) return;
                 _token = saved.token;
                 Community = saved.community;
+                Communities = saved.communities ?? Array.Empty<CommunityInfo>();
                 IsStaff = saved.staff;
                 Role = string.IsNullOrEmpty(saved.role) ? "owner" : saved.role;
             }
@@ -67,6 +72,7 @@ namespace LegendsNexus.Alley.Editor
             {
                 MeResponse me = await AlleyHttp.GetJson<MeResponse>("/api/auth/me", _token);
                 Community = me.community != null && !string.IsNullOrEmpty(me.community.id) ? me.community : null;
+                Communities = me.communities ?? Array.Empty<CommunityInfo>();
                 IsStaff = me.staff;
                 Role = string.IsNullOrEmpty(me.role) ? "owner" : me.role;
                 Save();
@@ -87,12 +93,30 @@ namespace LegendsNexus.Alley.Editor
             ExchangeResponse result = await AlleyAuth.SignIn(cancel);
             _token = result.token;
             Community = result.community != null && !string.IsNullOrEmpty(result.community.id) ? result.community : null;
+            Communities = result.communities ?? Array.Empty<CommunityInfo>();
             IsStaff = result.staff;
             Role = string.IsNullOrEmpty(result.role) ? "owner" : result.role;
             _loaded = true;
             Save();
             await RefreshEvents();
             await AlleyUdonRules.RefreshFromServer(force: true);
+            Changed?.Invoke();
+        }
+
+        // swaps the session over to another of this account's communities. the
+        // server hands back a token scoped to that community, so every upload
+        // and profile edit after this lands on the one picked
+        public static async Task SwitchCommunity(string communityId)
+        {
+            if (!IsSignedIn || string.IsNullOrEmpty(communityId) || Community?.id == communityId) return;
+            ExchangeResponse result = await AlleyHttp.PostJson<ExchangeResponse>("/api/auth/switch",
+                new SwitchCommunityBody { communityId = communityId }, _token);
+            if (!string.IsNullOrEmpty(result.token)) _token = result.token;
+            Community = result.community != null && !string.IsNullOrEmpty(result.community.id) ? result.community : Community;
+            if (result.communities != null) Communities = result.communities;
+            if (!string.IsNullOrEmpty(result.role)) Role = result.role;
+            Save();
+            await RefreshEvents();
             Changed?.Invoke();
         }
 
@@ -174,7 +198,7 @@ namespace LegendsNexus.Alley.Editor
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(SessionPath));
-                var file = new SessionFile { token = _token, community = Community, apiBase = AlleyConfig.ApiBase, staff = IsStaff, role = Role };
+                var file = new SessionFile { token = _token, community = Community, communities = Communities, apiBase = AlleyConfig.ApiBase, staff = IsStaff, role = Role };
                 File.WriteAllText(SessionPath, JsonUtility.ToJson(file));
             }
             catch (Exception e)

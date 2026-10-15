@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: AlleySlideshow
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: cc426134b0ad813418403c1232897ed7,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 030303020fc33b44fba01a37901b9298,
     type: 2}
   udonAssembly: 
   assemblyError: 

@@ -304,6 +304,52 @@ namespace LegendsNexus.Alley.Editor
             RefreshUi();
         }
 
+        // shown only to people on more than one community: owner of one, team
+        // member or booth dev on another. picking one re-scopes the session
+        private DropdownField _communitySwitch;
+
+        private void PaintCommunitySwitch()
+        {
+            Label nameLabel = rootVisualElement.Q<Label>("community-name");
+            if (nameLabel == null) return;
+            CommunityInfo[] list = AlleySession.Communities;
+            bool several = list != null && list.Length > 1;
+            if (_communitySwitch == null)
+            {
+                _communitySwitch = new DropdownField("Working on");
+                _communitySwitch.name = "community-switch";
+                _communitySwitch.style.marginTop = 4;
+                _communitySwitch.style.marginBottom = 6;
+                nameLabel.parent.Insert(nameLabel.parent.IndexOf(nameLabel) + 1, _communitySwitch);
+                _communitySwitch.RegisterValueChangedCallback(evt => _ = SwitchTo(evt.newValue));
+            }
+            _communitySwitch.style.display = several ? DisplayStyle.Flex : DisplayStyle.None;
+            if (!several) return;
+            var choices = new List<string>();
+            foreach (CommunityInfo community in list) choices.Add(community.name);
+            _communitySwitch.choices = choices;
+            _communitySwitch.SetValueWithoutNotify(AlleySession.Community?.name ?? choices[0]);
+        }
+
+        private async Task SwitchTo(string name)
+        {
+            if (_busy || string.IsNullOrEmpty(name) || name == AlleySession.Community?.name) return;
+            CommunityInfo pick = null;
+            foreach (CommunityInfo community in AlleySession.Communities) if (community.name == name) pick = community;
+            if (pick == null) return;
+            try
+            {
+                SetStatus("Switching to " + name + "...");
+                await AlleySession.SwitchCommunity(pick.id);
+                SetStatus("Now working on " + name + ".");
+            }
+            catch (AlleyApiException e)
+            {
+                SetStatus(e.Status == 404 ? "This server cannot switch communities yet." : "Could not switch: " + e.Message);
+                _communitySwitch.SetValueWithoutNotify(AlleySession.Community?.name ?? "");
+            }
+        }
+
         /* re-pulls the session, community, events and staff roster without a fresh sign in */
         private async void StartRefresh()
         {
@@ -501,6 +547,7 @@ namespace LegendsNexus.Alley.Editor
             if (hasCommunity)
             {
                 rootVisualElement.Q<Label>("community-name").text = AlleySession.Community?.name ?? "";
+                PaintCommunitySwitch();
                 rootVisualElement.Q<Label>("community-owner").text = "Owner: " + (AlleySession.Community?.ownerUsername ?? "");
                 _communityDescription.SetValueWithoutNotify(AlleySession.Community?.description ?? "");
                 _communityInvite.SetValueWithoutNotify(AlleySession.Community?.inviteUrl ?? "");
