@@ -72,6 +72,7 @@ namespace LegendsNexus.Alley.Editor
             UdonSharpEditorUtility.CopyProxyToUdon(copy);
             UdonBehaviour backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(copy);
             UnityEventTools.AddStringPersistentListener(field.onSelect, backing.SendCustomEvent, "Tapped");
+            UnityEventTools.AddStringPersistentListener(field.onValueChanged, backing.SendCustomEvent, "Restore");
             UnityEventTools.AddStringPersistentListener(field.onEndEdit, backing.SendCustomEvent, "Restore");
             UnityEventTools.AddStringPersistentListener(field.onDeselect, backing.SendCustomEvent, "Restore");
             Finish(root, "Set the text on the Alley Copy Field component, the field shows it in game.");

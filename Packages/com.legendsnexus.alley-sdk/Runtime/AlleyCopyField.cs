@@ -7,8 +7,8 @@ namespace LegendsNexus.Alley
     // a promo code or link people can copy. vrchat has no clipboard api, but it
     // does open its own keyboard when you tap a text field, already filled in,
     // and that keyboard can copy. so this is a field holding the text; tap it,
-    // the keyboard opens with it ready, copy. if someone types over it, the
-    // text puts itself back
+    // the keyboard opens with it ready, copy. every keystroke is undone on the
+    // spot, so nobody can change what it says
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     [AddComponentMenu("Legends Alley/Alley Copy Field")]
     [HelpURL("https://vrchatlegends.com")]
