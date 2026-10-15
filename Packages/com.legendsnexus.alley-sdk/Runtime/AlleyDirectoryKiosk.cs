@@ -47,6 +47,10 @@ namespace LegendsNexus.Alley
         public Color labelIdle = new Color(0.84f, 0.85f, 0.87f, 1f);
         public Color labelActive = Color.white;
 
+        [Header("Optional warp effect")]
+        [Tooltip("A behaviour exposing requestPosition, requestRotation and BeginTeleport. Left empty the kiosk teleports straight away")]
+        public VRC.Udon.UdonBehaviour teleportFx;
+
         private int _selected = -1;
 
         private void Start()
@@ -97,6 +101,14 @@ namespace LegendsNexus.Alley
             Transform target = boothTargets[_selected];
             VRCPlayerApi player = Networking.LocalPlayer;
             if (player == null || target == null) return;
+            // the world can route the warp through its own effect, which also owns the cooldown
+            if (teleportFx != null)
+            {
+                teleportFx.SetProgramVariable("requestPosition", target.position);
+                teleportFx.SetProgramVariable("requestRotation", target.rotation);
+                teleportFx.SendCustomEvent("BeginTeleport");
+                return;
+            }
             player.TeleportTo(target.position, target.rotation);
         }
 

@@ -36,11 +36,78 @@ namespace LegendsNexus.Alley.Editor
             }
         }
 
+        // booths whose community is switched off on the back end never reach the
+        // scene. a failed roster fetch leaves the list alone rather than hiding everyone
         public static async Task<StaffBooth[]> FetchBooths(AlleyEvent alleyEvent)
         {
             var response = await AlleyHttp.GetJson<StaffBoothsResponse>(
                 $"/api/admin/booths?eventId={Uri.EscapeDataString(alleyEvent.id)}&status=active", AlleySession.Token);
-            return response?.booths ?? Array.Empty<StaffBooth>();
+            StaffBooth[] booths = response?.booths ?? Array.Empty<StaffBooth>();
+
+            HashSet<string> disabled = await FetchDisabledCommunities();
+            if (disabled.Count == 0) return booths;
+
+            StaffBooth[] enabled = booths.Where(b => !disabled.Contains(b.communityId)).ToArray();
+            if (enabled.Length != booths.Length)
+            {
+                Log($"Left out {booths.Length - enabled.Length} booth(s) from disabled communities.");
+            }
+            return enabled;
+        }
+
+        private static async Task<HashSet<string>> FetchDisabledCommunities()
+        {
+            var disabled = new HashSet<string>();
+            try
+            {
+                StaffCommunitiesResponse response = await AlleyHttp.GetJson<StaffCommunitiesResponse>("/api/admin/communities", AlleySession.Token);
+                StaffCommunityCache.Store(response?.communities);
+                foreach (StaffCommunity community in StaffCommunityCache.Communities)
+                {
+                    if (community != null && !community.active && !string.IsNullOrEmpty(community.id)) disabled.Add(community.id);
+                }
+            }
+            catch (Exception e)
+            {
+                Log($"Could not check which communities are disabled, placing every active booth: {e.Message}");
+            }
+            return disabled;
+        }
+
+        // a community switched off after it was placed comes back out of the scene
+        // entirely, plot, imported files and logo, as if it had never been synced.
+        // turning it back on and syncing again brings it straight back
+        private static async Task RemoveDisabledFromScene()
+        {
+            HashSet<string> disabled = await FetchDisabledCommunities();
+            if (disabled.Count == 0) return;
+
+            bool removedAny = false;
+            foreach (BoothLocation location in FindLocations())
+            {
+                if (!location.HasBooth || !disabled.Contains(location.placedCommunityId)) continue;
+                string name = location.placedCommunityName;
+                string communityId = location.placedCommunityId;
+                ClearPlot(location);
+                DeleteImportedFiles(communityId);
+                removedAny = true;
+                Log($"Removed {name} from plot {location.PlotLabel}, their community is disabled.");
+            }
+            if (removedAny) AssetDatabase.Refresh();
+        }
+
+        private static void DeleteImportedFiles(string communityId)
+        {
+            StaffCommunity community = StaffCommunityCache.Communities.FirstOrDefault(c => c != null && c.id == communityId);
+            if (community != null)
+            {
+                string folder = ImportRoot + "/" + (string.IsNullOrEmpty(community.slug) ? SanitizeName(community.name) : community.slug);
+                if (AssetDatabase.IsValidFolder(folder)) AssetDatabase.DeleteAsset(folder);
+            }
+            if (!string.IsNullOrEmpty(communityId) && communityId.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_'))
+            {
+                AssetDatabase.DeleteAsset(LogoFolder + "/" + communityId + ".png");
+            }
         }
 
         public static async Task Sync(AlleyEvent alleyEvent)
@@ -49,6 +116,7 @@ namespace LegendsNexus.Alley.Editor
             IsRunning = true;
             try
             {
+                await RemoveDisabledFromScene();
                 StaffBooth[] booths = await FetchBooths(alleyEvent);
                 BoothLocation[] locations = FindLocations();
 
@@ -77,6 +145,12 @@ namespace LegendsNexus.Alley.Editor
             IsRunning = true;
             try
             {
+                if ((await FetchDisabledCommunities()).Contains(booth.communityId))
+                {
+                    Log($"{booth.communityName} is disabled on the back end, enable the community before placing it.");
+                    IsRunning = false;
+                    return;
+                }
                 foreach (BoothLocation other in FindLocations())
                 {
                     if (other == location || other.placedCommunityId != booth.communityId) continue;
@@ -99,6 +173,7 @@ namespace LegendsNexus.Alley.Editor
             IsRunning = true;
             try
             {
+                await RemoveDisabledFromScene();
                 StaffBooth[] booths = await FetchBooths(alleyEvent);
                 var open = FindLocations().Where(l => !l.locked).ToList();
                 Log($"Shuffling {booths.Length} booth(s) across {open.Count} unlocked plot(s)...");
@@ -562,6 +637,11 @@ namespace LegendsNexus.Alley.Editor
 
                 Log($"Placed {item.communityName} v{item.version} on plot {location.PlotLabel}.");
                 WarnAboutMissingShaders(item);
+                int marked = AlleyMissingShaders.Apply(instance);
+                if (marked > 0)
+                {
+                    Log($"Put the shader not found card on {marked} material slot(s) in {item.communityName}'s booth.");
+                }
                 WarnAboutUdon(instance, item.communityName);
             }
             catch (Exception e)

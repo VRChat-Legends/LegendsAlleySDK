@@ -192,12 +192,20 @@ namespace LegendsNexus.Alley.Editor
             label.alignment = TextAlignmentOptions.Left;
             label.enableWordWrapping = false;
             label.overflowMode = TextOverflowModes.Ellipsis;
-            Pin((RectTransform)label.transform, new Vector2(0f, 0.5f), new Vector2(400f, 0f));
+            // stretch between the logo and the plot tag so long names trail off
+            // with an ellipsis instead of running into the plot on narrow lists
+            var labelRect = (RectTransform)label.transform;
+            labelRect.anchorMin = new Vector2(0f, 0.5f);
+            labelRect.anchorMax = new Vector2(1f, 0.5f);
+            labelRect.pivot = new Vector2(0.5f, 0.5f);
+            labelRect.offsetMin = new Vector2(120f, -24f);
+            labelRect.offsetMax = new Vector2(-150f, 24f);
 
             TMP_Text plotTag = Label(row.transform, "Plot", plot.PlotLabel.ToUpperInvariant(),
-                new Vector2(200f, 40f), 16f, 22f, TextDim);
+                new Vector2(120f, 40f), 16f, 22f, TextDim);
             plotTag.alignment = TextAlignmentOptions.Right;
-            Pin((RectTransform)plotTag.transform, new Vector2(1f, 0.5f), new Vector2(-130f, 0f));
+            plotTag.enableWordWrapping = false;
+            Pin((RectTransform)plotTag.transform, new Vector2(1f, 0.5f), new Vector2(-80f, 0f));
 
             // the little udon brain for this row, it just hands its index over
             var proxy = (AlleyDirectoryEntry)UdonSharpComponentExtensions.AddUdonSharpComponent(row, typeof(AlleyDirectoryEntry));
