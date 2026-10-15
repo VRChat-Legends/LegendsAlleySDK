@@ -171,6 +171,13 @@
                             </ui:VisualElement>
                             <ui:Button name="impostors-button" text="BAKE" class="alley-action-button" />
                         </ui:VisualElement>
+                        <ui:VisualElement class="alley-action-row alley-action-worldkit">
+                            <ui:VisualElement class="alley-action-text">
+                                <ui:Label text="Import world kit" class="alley-action-title" />
+                                <ui:Label text="Brings the world menu, info wall, booth directory, name tags and join intro into this project, code and UI, and wires them into the open scene." class="alley-action-desc" />
+                            </ui:VisualElement>
+                            <ui:Button name="world-kit-button" text="IMPORT" class="alley-action-button" />
+                        </ui:VisualElement>
 
                         <ui:VisualElement name="staff-log-section" class="alley-staff-log-section">
                             <ui:VisualElement class="alley-divider" />

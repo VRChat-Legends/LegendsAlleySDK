@@ -194,6 +194,12 @@ namespace LegendsNexus.Alley.Editor
             _managerRemoveButton.clicked += StartRemoveManager;
             _placeButton.clicked += StartManualPlace;
             _randomizeButton.clicked += StartRandomize;
+            Button worldKitButton = rootVisualElement.Q<Button>("world-kit-button");
+            if (worldKitButton != null)
+            {
+                worldKitButton.clicked += AlleyWorldKit.Import;
+                worldKitButton.SetEnabled(AlleyWorldKit.Available);
+            }
             _communityDescription.RegisterValueChangedCallback(evt =>
             {
                 if (evt.newValue != null && evt.newValue.Length > 500)
