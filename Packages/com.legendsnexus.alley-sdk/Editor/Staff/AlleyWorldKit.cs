@@ -7,10 +7,11 @@ using UnityEngine;
 namespace LegendsNexus.Alley.Editor
 {
     // carries the staff world between projects: the world menu, the event info
-    // wall, the booth directory, name tags, the warp effect and the join intro,
-    // with all their code, icons and volumetric ui. one click unpacks the kit,
-    // waits for unity to compile it, drops in whichever pieces the open scene
-    // is missing and runs the world setup to wire everything up.
+    // wall, the booth directory, name tags, the warp effect, the join intro and
+    // the Tiltify fundraiser banner with its fireworks, with all their code,
+    // icons and volumetric ui. one click unpacks the kit, waits for unity to
+    // compile it, drops in whichever pieces the open scene is missing and runs
+    // the world setup to wire everything up.
     //
     // the kit lives in StaffKit~ inside this package, which unity never imports
     // on its own. staff refresh it from a working world with
@@ -31,6 +32,8 @@ namespace LegendsNexus.Alley.Editor
             "Booth Directory Board",
             "Alley World Systems",
             "Alley Join Intro",
+            "Fundraiser Board",
+            "Fundraiser Fireworks",
         };
 
         public static bool Available => File.Exists(Path.GetFullPath(KitFile));
@@ -47,7 +50,7 @@ namespace LegendsNexus.Alley.Editor
                 return;
             }
             if (!EditorUtility.DisplayDialog("Import the Legends Alley world kit?",
-                    "This adds the world menu, event info wall, booth directory, name tags, warp effect and join intro to this project, then places any of them the open scene is missing and wires them up.\n\nPieces already in the scene are kept and repaired, not replaced.",
+                    "This adds the world menu, event info wall, booth directory, name tags, warp effect, join intro and fundraiser banner to this project, then places any of them the open scene is missing and wires them up.\n\nPieces already in the scene are kept and repaired, not replaced.",
                     "Import", "Cancel"))
             {
                 return;
