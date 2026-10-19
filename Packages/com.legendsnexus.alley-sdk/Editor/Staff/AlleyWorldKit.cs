@@ -33,6 +33,7 @@ namespace LegendsNexus.Alley.Editor
             "Alley World Systems",
             "Alley Join Intro",
             "Fundraiser Board",
+            "Fundraiser Donors",
             "Fundraiser Fireworks",
         };
 
