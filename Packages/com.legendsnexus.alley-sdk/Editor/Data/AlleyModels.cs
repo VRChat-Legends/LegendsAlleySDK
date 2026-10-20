@@ -212,6 +212,8 @@ namespace LegendsNexus.Alley.Editor
         public string[] shaders;
         public string downloadUrl;
         public string uploadedAt;
+        // "web" for booths built on the website booth builder, empty for uploaded packages
+        public string source;
     }
 
     [Serializable]

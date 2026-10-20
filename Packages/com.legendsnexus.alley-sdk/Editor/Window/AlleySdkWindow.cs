@@ -771,7 +771,7 @@ namespace LegendsNexus.Alley.Editor
 
                 _staffBooths = booths;
                 var choices = new List<string>();
-                foreach (StaffBooth booth in booths) choices.Add($"{booth.communityName} v{booth.version}");
+                foreach (StaffBooth booth in booths) choices.Add($"{booth.communityName} v{booth.version}" + (WebBooths.IsWeb(booth) ? " (website)" : ""));
                 _placeBoothDropdown.choices = choices;
                 if (choices.Count > 0 && (_placeBoothDropdown.index < 0 || _placeBoothDropdown.index >= choices.Count))
                 {

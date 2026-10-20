@@ -44,7 +44,10 @@ namespace LegendsNexus.Alley.Editor
                 $"/api/admin/booths?eventId={Uri.EscapeDataString(alleyEvent.id)}&status=active", AlleySession.Token);
             StaffBooth[] booths = response?.booths ?? Array.Empty<StaffBooth>();
 
+            // the roster fetch also fills the community cache the web booths read slugs from
             HashSet<string> disabled = await FetchDisabledCommunities();
+            // booths built on the website join the same list, approved ones only
+            booths = WebBooths.Merge(booths, await WebBooths.Fetch(AlleySession.Token, Log));
             if (disabled.Count == 0) return booths;
 
             StaffBooth[] enabled = booths.Where(b => !disabled.Contains(b.communityId)).ToArray();
@@ -243,9 +246,22 @@ namespace LegendsNexus.Alley.Editor
                 return;
             }
 
-            Log($"Downloading {work.Count} booth package(s)...");
-            string[] packagePaths = await Task.WhenAll(work.Select(w => DownloadSafe(w.booth)));
             await Task.WhenAll(work.Select(w => DownloadLogoSafe(w.booth)));
+
+            // website booths have no package, they are built straight onto their plot
+            var webWork = work.Where(w => WebBooths.IsWeb(w.booth)).ToList();
+            work = work.Where(w => !WebBooths.IsWeb(w.booth)).ToList();
+            foreach ((BoothLocation location, StaffBooth booth) in webWork)
+            {
+                bool isUpdate = location.placedCommunityId == booth.communityId && location.HasBooth;
+                string folder = FolderNameFor(new ImportItem { communitySlug = booth.communitySlug, communityName = booth.communityName, communityId = booth.communityId });
+                if (!await WebBooths.BuildSafe(booth, location, folder, Log)) continue;
+                if (isUpdate) queue.updatedCount++;
+                else queue.importedCount++;
+            }
+
+            if (work.Count > 0) Log($"Downloading {work.Count} booth package(s)...");
+            string[] packagePaths = await Task.WhenAll(work.Select(w => DownloadSafe(w.booth)));
 
             for (int i = 0; i < work.Count; i++)
             {
@@ -275,6 +291,11 @@ namespace LegendsNexus.Alley.Editor
 
             ImportQueue.Save(queue);
 
+            if (queue.items.Count == 0 && webWork.Count > 0)
+            {
+                Finish(queue);
+                return;
+            }
             if (queue.items.Count == 0)
             {
                 Log($"Everything is up to date. Skipped {queue.skippedCount} plot(s).");
