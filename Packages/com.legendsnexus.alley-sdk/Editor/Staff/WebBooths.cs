@@ -257,11 +257,14 @@ namespace LegendsNexus.Alley.Editor
                 }
 
                 JObject fields = booth["fields"] as JObject ?? new JObject();
+                // the creator marker is for building a booth, not placing one: uploaded
+                // packages have it stripped, and left on it lists the booth under the
+                // signed in community in the SDK's Your Booth picker
                 LegendsBooth marker = instance.GetComponent<LegendsBooth>();
-                if (marker != null) marker.displayName = (string)fields["displayName"] ?? name;
+                if (marker != null) UnityEngine.Object.DestroyImmediate(marker);
 
                 ApplyVideo(instance, items, fields, files.GetValueOrDefault("screen"));
-                ApplyGroup(instance, items, fields, iconPath);
+                ApplyGroup(instance, items, fields, iconPath, (string)fields["displayName"] ?? name);
                 ApplyBackdrop(instance, slidesMaterial, columns, rows, slidePaths.Count, (float?)backdrop?["secondsPerSlide"] ?? 6f);
                 PlaceAddon(instance, items["portal"] as JObject, "Alley Portal", go => go.GetComponent<AlleyPortal>().worldId = (string)items["portal"]["worldId"] ?? "");
                 PlaceAddon(instance, items["avatar"] as JObject, "Alley Avatar Pedestal", go => go.GetComponent<AlleyAvatarPedestal>().avatarId = (string)items["avatar"]["avatarId"] ?? "");
@@ -325,7 +328,7 @@ namespace LegendsNexus.Alley.Editor
             UdonSharpEditorUtility.CopyProxyToUdon(player);
         }
 
-        private static void ApplyGroup(GameObject root, JObject items, JObject fields, string iconPath)
+        private static void ApplyGroup(GameObject root, JObject items, JObject fields, string iconPath, string displayName)
         {
             Transform group = root.transform.Find("Alley Group Button");
             if (group == null) return;
@@ -335,6 +338,11 @@ namespace LegendsNexus.Alley.Editor
             AlleyGroupButton button = group.GetComponent<AlleyGroupButton>();
             if (button == null) return;
             button.groupId = (string)fields["groupId"] ?? "";
+            if (button.nameLabel != null)
+            {
+                button.nameLabel.text = displayName;
+                EditorUtility.SetDirty(button.nameLabel);
+            }
             if (iconPath != null && button.logoTarget != null)
             {
                 button.logoTarget.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(iconPath);
@@ -469,97 +477,79 @@ namespace LegendsNexus.Alley.Editor
             return material;
         }
 
-        // a two sided card cut out by the picture's alpha, standing on its bottom
-        // edge. the transparent margin is trimmed so the height is the figure's
+        // the cardboard standee, the same pipeline the website previews with: the
+        // print on the front, cardboard on the back and edges, a folding stand
+        private const string CardboardTexture = "Packages/com.legendsnexus.alley-sdk/Runtime/Textures/AlleyCardboard.png";
+
         private static void BuildCutout(GameObject root, string folder, JObject item, byte[] bytes)
         {
-            var source = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-            if (!source.LoadImage(bytes)) return;
-            Color32[] px = source.GetPixels32();
-            int w = source.width, h = source.height;
-            int minX = w, minY = h, maxX = -1, maxY = -1;
-            for (int y = 0; y < h; y++)
-            {
-                for (int x = 0; x < w; x++)
-                {
-                    if (px[y * w + x].a < 128) continue;
-                    if (x < minX) minX = x;
-                    if (x > maxX) maxX = x;
-                    if (y < minY) minY = y;
-                    if (y > maxY) maxY = y;
-                }
-            }
-            if (maxX < 0) { minX = 0; minY = 0; maxX = w - 1; maxY = h - 1; }
-            int cw = maxX - minX + 1, ch = maxY - minY + 1;
-            var cropped = new Texture2D(cw, ch, TextureFormat.RGBA32, false);
-            cropped.SetPixels(source.GetPixels(minX, minY, cw, ch));
-            cropped.Apply();
             string texPath = folder + "/Textures/cutout.png";
-            File.WriteAllBytes(texPath, cropped.EncodeToPNG());
-            UnityEngine.Object.DestroyImmediate(source);
-            UnityEngine.Object.DestroyImmediate(cropped);
+            File.WriteAllBytes(texPath, bytes);
             AssetDatabase.ImportAsset(texPath, ImportAssetOptions.ForceSynchronousImport);
             var importer = (TextureImporter)AssetImporter.GetAtPath(texPath);
             importer.alphaIsTransparency = true;
             importer.wrapMode = TextureWrapMode.Clamp;
             importer.SaveAndReimport();
 
-            float height = (float?)item["height"] ?? 1.6f;
-            float width = height * cw / ch;
+            var source = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            if (!source.LoadImage(bytes)) throw new Exception("could not read the cutout picture");
+            StandeeBuilder.Result built;
+            try
+            {
+                built = StandeeBuilder.Build(source, new StandeeBuilder.Settings
+                {
+                    height = (float?)item["height"] ?? 1.6f,
+                    threshold = (float?)item["threshold"] ?? 0.5f,
+                    thickness = (float?)item["thickness"] ?? 0.012f,
+                    stand = (bool?)item["stand"] != false,
+                });
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(source);
+            }
+
             string meshPath = folder + "/Cutout.asset";
             Mesh mesh = AssetDatabase.LoadAssetAtPath<Mesh>(meshPath);
             if (mesh == null)
             {
-                mesh = new Mesh();
+                mesh = built.mesh;
                 AssetDatabase.CreateAsset(mesh, meshPath);
             }
-            mesh.Clear();
-            mesh.name = "Cutout";
-            float hw = width / 2f;
-            // front faces +Z (out of the booth), the back is the same print seen from behind
-            mesh.vertices = new[]
+            else
             {
-                new Vector3(hw, 0, 0), new Vector3(-hw, 0, 0), new Vector3(-hw, height, 0), new Vector3(hw, height, 0),
-                new Vector3(-hw, 0, 0), new Vector3(hw, 0, 0), new Vector3(hw, height, 0), new Vector3(-hw, height, 0),
-            };
-            mesh.normals = new[]
-            {
-                Vector3.forward, Vector3.forward, Vector3.forward, Vector3.forward,
-                Vector3.back, Vector3.back, Vector3.back, Vector3.back,
-            };
-            mesh.uv = new[]
-            {
-                new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1),
-                new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1),
-            };
-            mesh.triangles = new[] { 0, 2, 1, 0, 3, 2, 4, 6, 5, 4, 7, 6 };
-            mesh.RecalculateBounds();
+                EditorUtility.CopySerialized(built.mesh, mesh);
+                UnityEngine.Object.DestroyImmediate(built.mesh);
+            }
             EditorUtility.SetDirty(mesh);
 
-            string matPath = folder + "/Materials/Cutout.mat";
-            Material material = AssetDatabase.LoadAssetAtPath<Material>(matPath);
-            if (material == null)
-            {
-                material = new Material(Shader.Find("Standard"));
-                AssetDatabase.CreateAsset(material, matPath);
-            }
-            material.mainTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath);
-            material.SetFloat("_Mode", 1f);
-            material.SetFloat("_Cutoff", 0.5f);
-            material.SetFloat("_Glossiness", 0.1f);
-            material.EnableKeyword("_ALPHATEST_ON");
-            material.SetOverrideTag("RenderType", "TransparentCutout");
-            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
-            EditorUtility.SetDirty(material);
+            Material print = CutoutMaterial(folder + "/Materials/Cutout.mat", AssetDatabase.LoadAssetAtPath<Texture2D>(texPath));
+            Material cardboard = CutoutMaterial(folder + "/Materials/Cardboard.mat", AssetDatabase.LoadAssetAtPath<Texture2D>(CardboardTexture));
 
             var go = new GameObject("Cardboard Cutout");
             go.transform.SetParent(root.transform, false);
             Place(go.transform, item);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
-            go.AddComponent<MeshRenderer>().sharedMaterial = material;
+            go.AddComponent<MeshRenderer>().sharedMaterials = new[] { print, cardboard };
             var collider = go.AddComponent<BoxCollider>();
-            collider.center = new Vector3(0, height / 2f, 0);
-            collider.size = new Vector3(width, height, 0.05f);
+            collider.center = mesh.bounds.center;
+            collider.size = mesh.bounds.size;
+        }
+
+        private static Material CutoutMaterial(string path, Texture2D texture)
+        {
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(Shader.Find("Standard"));
+                AssetDatabase.CreateAsset(material, path);
+            }
+            material.shader = Shader.Find("Standard");
+            material.mainTexture = texture;
+            material.SetFloat("_Glossiness", 0.08f);
+            material.SetFloat("_Metallic", 0f);
+            EditorUtility.SetDirty(material);
+            return material;
         }
 
         // ---------------------------------------------------------------- helpers
