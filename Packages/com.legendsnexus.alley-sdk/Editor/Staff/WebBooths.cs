@@ -27,7 +27,16 @@ namespace LegendsNexus.Alley.Editor
         public const string ApiOverridePref = "LegendsAlley.WebBoothsApi";
         private const string ImportRoot = "Assets/LegendsAlley/Booths";
 
-        private static readonly HttpClient Client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+        // the website sits behind Cloudflare, which turns away requests with no
+        // User-Agent (error 1010), so this names the SDK like AlleyHttp does
+        private static readonly HttpClient Client = CreateClient();
+
+        private static HttpClient CreateClient()
+        {
+            var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+            client.DefaultRequestHeaders.Add("User-Agent", $"LegendsAlleySDK/{AlleyConfig.SdkVersion}");
+            return client;
+        }
         private static readonly Dictionary<string, JObject> Configs = new Dictionary<string, JObject>();
 
         public static bool IsWeb(StaffBooth booth) => booth != null && booth.source == Source;
@@ -58,7 +67,7 @@ namespace LegendsNexus.Alley.Editor
                 }
 
                 var list = new List<StaffBooth>();
-                foreach (JObject config in (JObject.Parse(body)["booths"] as JArray ?? new JArray()).OfType<JObject>())
+                foreach (JObject config in (ParseJson(body)["booths"] as JArray ?? new JArray()).OfType<JObject>())
                 {
                     if ((int?)config["schema"] != 1 || (string)config["prefab"]?["id"] != "alley-booth-v2") continue;
                     string id = (string)config["id"];
@@ -106,12 +115,28 @@ namespace LegendsNexus.Alley.Editor
                     byCommunity[key] = booth;
                     order.Add(key);
                 }
-                else if (string.CompareOrdinal(booth.uploadedAt ?? "", existing.uploadedAt ?? "") > 0)
+                else if (UploadedAt(booth) > UploadedAt(existing))
                 {
                     byCommunity[key] = booth;
                 }
             }
             return order.Select(k => byCommunity[k]).ToArray();
+        }
+
+        // dates stay the text the server sent; Newtonsoft would otherwise turn
+        // them into local culture strings that no longer sort
+        private static JObject ParseJson(string body)
+        {
+            using (var reader = new Newtonsoft.Json.JsonTextReader(new StringReader(body)) { DateParseHandling = Newtonsoft.Json.DateParseHandling.None })
+            {
+                return JObject.Load(reader);
+            }
+        }
+
+        private static DateTimeOffset UploadedAt(StaffBooth booth)
+        {
+            return DateTimeOffset.TryParse(booth.uploadedAt, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeUniversal, out DateTimeOffset at) ? at : DateTimeOffset.MinValue;
         }
 
         public static async Task<bool> BuildSafe(StaffBooth booth, BoothLocation location, string folder, Action<string> log)
