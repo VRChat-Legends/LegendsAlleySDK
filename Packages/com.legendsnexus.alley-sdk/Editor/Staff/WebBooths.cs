@@ -518,7 +518,16 @@ namespace LegendsNexus.Alley.Editor
             }
             else
             {
-                EditorUtility.CopySerialized(built.mesh, mesh);
+                // copy through the mesh api, CopySerialized leaves the editor drawing the old mesh until a restart
+                mesh.Clear();
+                mesh.indexFormat = built.mesh.indexFormat;
+                mesh.SetVertices(built.mesh.vertices);
+                mesh.SetNormals(built.mesh.normals);
+                mesh.SetTangents(built.mesh.tangents);
+                mesh.SetUVs(0, built.mesh.uv);
+                mesh.subMeshCount = built.mesh.subMeshCount;
+                for (int i = 0; i < built.mesh.subMeshCount; i++) mesh.SetTriangles(built.mesh.GetTriangles(i), i);
+                mesh.RecalculateBounds();
                 UnityEngine.Object.DestroyImmediate(built.mesh);
             }
             EditorUtility.SetDirty(mesh);
