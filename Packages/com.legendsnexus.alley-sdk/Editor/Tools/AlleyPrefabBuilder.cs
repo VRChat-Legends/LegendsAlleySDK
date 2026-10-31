@@ -361,6 +361,7 @@ namespace LegendsNexus.Alley.Editor
 
             var button = go.AddComponent<Button>();
             button.targetGraphic = face;
+            button.navigation = new Navigation { mode = Navigation.Mode.None };
             return button;
         }
 
@@ -488,6 +489,7 @@ namespace LegendsNexus.Alley.Editor
                 pauseImage.gameObject.SetActive(false);
                 var button = buttonRoot.AddComponent<Button>();
                 button.targetGraphic = face;
+                button.navigation = new Navigation { mode = Navigation.Mode.None };
                 UnityEventTools.AddStringPersistentListener(button.onClick, backing.SendCustomEvent, "OnPlayPauseClick");
 
                 TMP_Text volumeTag = AddLabel(bar, "Volume Tag", "VOLUME", new Vector2(200f, 30f), 16f, 22f, TextDim);
@@ -611,6 +613,11 @@ namespace LegendsNexus.Alley.Editor
             slider.minValue = 0f;
             slider.maxValue = 1f;
             slider.value = 0.7f;
+            // world panels are pointer only: with navigation on, a slider stays
+            // selected after a drag and the thumbstick keeps moving it
+            Navigation navigation = slider.navigation;
+            navigation.mode = Navigation.Mode.None;
+            slider.navigation = navigation;
             return slider;
         }
 

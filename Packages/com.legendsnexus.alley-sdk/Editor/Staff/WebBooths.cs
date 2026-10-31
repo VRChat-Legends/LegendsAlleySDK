@@ -17,11 +17,24 @@ namespace LegendsNexus.Alley.Editor
     // booths built on the website booth builder. they sit in the staff booth list
     // next to the uploaded packages and go through the same sync, place and
     // shuffle. the website only keeps settings and images, so placing one builds
-    // a prefab variant of the world's Alley Booth v2: banners, recoloured
-    // palette, item placements, add-ons, the backdrop slideshow and the cutout
+    // a prefab variant of Alley Booth v2, which ships in this package: banners,
+    // recoloured palette, item placements, add-ons, the back wall (video,
+    // image or slideshow) and the cutout. each plot picks the standard or the
+    // Christmas look of the booth
     internal static class WebBooths
     {
         public const string Source = "web";
+        public const string ChristmasStyle = "christmas";
+
+        private const string BoothsRoot = AlleyConfig.PackageRoot + "/Runtime/Booths";
+        public const string StandardPrefab = BoothsRoot + "/Alley Booth v2/Alley_Booth_v2.prefab";
+        public const string ChristmasPrefab = BoothsRoot + "/Alley Booth v2 Christmas/Alley_Booth_v2_Christmas.prefab";
+        // found by id too, in case a project keeps an older copy somewhere else
+        private const string StandardGuid = "7e1f1dd2b0eec9a4c9ed01ae34f93c86";
+
+        // bumped when the base booth changes in a way placed booths should pick
+        // up on the next sync (2: the screen moved to the back wall)
+        private const string BuildRevision = "b2";
         private const string DefaultApi = "https://api.vrchatlegends.com";
         // only for testing against a local website, the live site needs nothing set
         public const string ApiOverridePref = "LegendsAlley.WebBoothsApi";
@@ -40,6 +53,41 @@ namespace LegendsNexus.Alley.Editor
         private static readonly Dictionary<string, JObject> Configs = new Dictionary<string, JObject>();
 
         public static bool IsWeb(StaffBooth booth) => booth != null && booth.source == Source;
+
+        public static bool IsChristmas(BoothLocation location) => location != null && location.webBoothStyle == ChristmasStyle;
+
+        // what a plot holding this booth should have as its version marker. web
+        // booths also carry the base revision and the plot's look, so a new
+        // base or a look change rebuilds them on the next sync
+        public static string ShaFor(StaffBooth booth, BoothLocation location)
+        {
+            if (!IsWeb(booth)) return booth?.sha256;
+            return $"{booth.sha256}:{BuildRevision}" + (IsChristmas(location) ? ":" + ChristmasStyle : "");
+        }
+
+        // the booth to build on. the website names the standard booth; older
+        // settings name a path in Assets from before it shipped in the SDK
+        private static GameObject LoadBase(string websitePath, bool christmas)
+        {
+            if (christmas)
+            {
+                GameObject festive = AssetDatabase.LoadAssetAtPath<GameObject>(ChristmasPrefab);
+                if (festive != null) return festive;
+            }
+            GameObject found = AssetDatabase.LoadAssetAtPath<GameObject>(StandardPrefab);
+            if (found == null && !string.IsNullOrEmpty(websitePath) && (websitePath.StartsWith("Assets/") || websitePath.StartsWith("Packages/")))
+            {
+                found = AssetDatabase.LoadAssetAtPath<GameObject>(websitePath);
+            }
+            if (found == null)
+            {
+                string byId = AssetDatabase.GUIDToAssetPath(StandardGuid);
+                if (!string.IsNullOrEmpty(byId)) found = AssetDatabase.LoadAssetAtPath<GameObject>(byId);
+            }
+            return found;
+        }
+
+        private static string FolderOf(GameObject asset) => Path.GetDirectoryName(AssetDatabase.GetAssetPath(asset)).Replace('\\', '/');
 
         private static Uri ApiBase()
         {
@@ -164,12 +212,13 @@ namespace LegendsNexus.Alley.Editor
         {
             if (!Configs.TryGetValue(staffBooth.id, out JObject booth)) throw new Exception("its settings were not fetched, sync again");
             string name = staffBooth.communityName;
-            string basePrefab = (string)booth["prefab"]?["unityPrefab"];
-            GameObject baseAsset = !string.IsNullOrEmpty(basePrefab) && basePrefab.StartsWith("Assets/")
-                ? AssetDatabase.LoadAssetAtPath<GameObject>(basePrefab)
-                : null;
-            if (baseAsset == null) throw new Exception($"this project has no Alley Booth v2 at {basePrefab}, import the staff world kit");
-            string baseRoot = Path.GetDirectoryName(basePrefab).Replace('\\', '/');
+            bool christmas = IsChristmas(location);
+            GameObject baseAsset = LoadBase((string)booth["prefab"]?["unityPrefab"], christmas);
+            if (baseAsset == null) throw new Exception("the Legends Alley SDK is missing Alley Booth v2, update or reinstall the SDK");
+            // banners come from the standard booth, the palette from the look in use
+            GameObject standard = AssetDatabase.LoadAssetAtPath<GameObject>(StandardPrefab) ?? baseAsset;
+            string baseRoot = FolderOf(standard);
+            string styleRoot = FolderOf(baseAsset);
 
             string folder = $"{ImportRoot}/{boothFolder}/Web";
             Directory.CreateDirectory(folder + "/Textures");
@@ -191,7 +240,9 @@ namespace LegendsNexus.Alley.Editor
 
             var slidePaths = new List<string>();
             JObject backdrop = booth["backdrop"] as JObject;
-            bool slideshow = (string)backdrop?["mode"] == "slideshow";
+            JObject items = booth["items"] as JObject ?? new JObject();
+            string wall = BackWall(backdrop, items, booth["fields"] as JObject);
+            bool slideshow = wall == "slideshow";
             if (slideshow)
             {
                 int i = 0;
@@ -205,7 +256,6 @@ namespace LegendsNexus.Alley.Editor
                 }
             }
 
-            JObject items = booth["items"] as JObject ?? new JObject();
             JObject cutout = items["cutout"] as JObject;
             byte[] cutoutBytes = (bool?)cutout?["enabled"] == true ? await Download((string)cutout["image"]?["url"]) : null;
 
@@ -222,8 +272,14 @@ namespace LegendsNexus.Alley.Editor
             var swap = new Dictionary<Material, Material>();
             if (files.TryGetValue("sign", out string signPath)) Swap(swap, baseRoot, "Banner_Sign", CopyMaterial(baseRoot, folder, "Banner_Sign", signPath));
             if (files.TryGetValue("backdrop", out string backPath)) Swap(swap, baseRoot, "Banner_Back", CopyMaterial(baseRoot, folder, "Banner_Back", backPath));
-            Material palette = BuildPalette(baseRoot, folder, booth["colors"] as JObject);
-            if (palette != null) Swap(swap, baseRoot, "Booth_Palette", palette);
+            else if (wall == "video")
+            {
+                // the screen covers the middle of the wall, a plain dark banner frames it
+                Material blank = AssetDatabase.LoadAssetAtPath<Material>(baseRoot + "/Materials/Banner_Blank.mat");
+                if (blank != null) Swap(swap, baseRoot, "Banner_Back", blank);
+            }
+            Material palette = BuildPalette(styleRoot, folder, booth["colors"] as JObject);
+            if (palette != null) Swap(swap, styleRoot, "Booth_Palette", palette);
 
             Material slidesMaterial = null;
             int columns = 1, rows = 1;
@@ -263,7 +319,7 @@ namespace LegendsNexus.Alley.Editor
                 LegendsBooth marker = instance.GetComponent<LegendsBooth>();
                 if (marker != null) UnityEngine.Object.DestroyImmediate(marker);
 
-                ApplyVideo(instance, items, fields, files.GetValueOrDefault("screen"));
+                ApplyVideo(instance, items, fields, files.GetValueOrDefault("screen"), wall == "video");
                 ApplyGroup(instance, items, fields, iconPath, (string)fields["displayName"] ?? name);
                 ApplyBackdrop(instance, slidesMaterial, columns, rows, slidePaths.Count, (float?)backdrop?["secondsPerSlide"] ?? 6f);
                 PlaceAddon(instance, items["portal"] as JObject, "Alley Portal", go => go.GetComponent<AlleyPortal>().worldId = (string)items["portal"]["worldId"] ?? "");
@@ -284,11 +340,11 @@ namespace LegendsNexus.Alley.Editor
             location.placedGroupId = staffBooth.groupId ?? "";
             location.placedDescription = staffBooth.description ?? "";
             location.placedVersion = staffBooth.version;
-            location.placedSha256 = staffBooth.sha256;
+            location.placedSha256 = ShaFor(staffBooth, location);
             EditorUtility.SetDirty(location);
             EditorSceneManager.MarkSceneDirty(location.gameObject.scene);
             AssetDatabase.SaveAssets();
-            log($"Placed {name} v{staffBooth.version} (website booth) on plot {location.PlotLabel}.");
+            log($"Placed {name} v{staffBooth.version} (website booth{(christmas ? ", Christmas" : "")}) on plot {location.PlotLabel}.");
         }
 
         // images only come from the website itself, never another host the json names
@@ -304,20 +360,37 @@ namespace LegendsNexus.Alley.Editor
 
         // ---------------------------------------------------------------- pieces
 
-        private static void ApplyVideo(GameObject root, JObject items, JObject fields, string screenPath)
+        // what the back wall shows: the video screen, the backdrop image, or the
+        // slideshow. settings from before the screen moved to the back wall have
+        // no wall version: a booth with a video link playing there keeps it
+        private static string BackWall(JObject backdrop, JObject items, JObject fields)
+        {
+            string mode = (string)backdrop?["mode"] ?? "image";
+            if (mode == "video" || mode == "slideshow") return mode;
+            if ((int?)backdrop?["wall"] == null
+                && (items?["video"] as JObject)?["enabled"]?.Type == JTokenType.Boolean
+                && (bool)items["video"]["enabled"]
+                && !string.IsNullOrEmpty((string)fields?["videoUrl"]))
+            {
+                return "video";
+            }
+            return "image";
+        }
+
+        private static void ApplyVideo(GameObject root, JObject items, JObject fields, string screenPath, bool on)
         {
             Transform video = root.transform.Find("Alley Video Player");
             if (video == null) return;
-            JObject item = items["video"] as JObject;
-            Place(video, item);
-            video.gameObject.SetActive((bool?)item?["enabled"] != false);
+            // the screen is part of the back wall now, it does not move
+            video.gameObject.SetActive(on);
 
-            JObject controls = items["controls"] as JObject;
+            // the controls stand where the community put them, in booth space
+            JObject controls = items["screenControls"] as JObject;
             Transform bar = video.Find("Control Bar");
-            if (bar != null && controls?["unityLocalPosition"] is JArray local && local.Count == 3)
+            if (bar != null && controls?["position"] is JArray at && at.Count == 3)
             {
-                bar.localPosition = new Vector3((float)local[0], (float)local[1], (float)local[2]);
-                bar.localEulerAngles = new Vector3((float?)controls["tiltX"] ?? 25f, 180f + ((float?)controls["rotationY"] ?? 0f), 0f);
+                bar.position = root.transform.TransformPoint(new Vector3((float)at[0], (float)at[1], (float)at[2]));
+                bar.rotation = root.transform.rotation * Quaternion.Euler((float?)controls["tiltX"] ?? 15f, 180f + ((float?)controls["rotationY"] ?? 0f), 0f);
             }
 
             AlleyVideoPlayer player = video.GetComponent<AlleyVideoPlayer>();
@@ -402,6 +475,8 @@ namespace LegendsNexus.Alley.Editor
         // to repaint; glow cells go into the glow mask as well
         private static Material BuildPalette(string baseRoot, string folder, JObject colors)
         {
+            // slots left at the website default keep the look's own colour, so a
+            // Christmas plot stays festive where the community changed nothing
             if (colors == null || (bool?)colors["changed"] != true) return null;
             int grid = (int?)colors["grid"] ?? 4;
             Texture2D pal = ReadPng(baseRoot + "/Textures/Booth_Palette.png");
@@ -410,7 +485,9 @@ namespace LegendsNexus.Alley.Editor
             {
                 var slot = slotProp.Value as JObject;
                 if (slot == null || !(slot["cell"] is JArray cell) || cell.Count != 2) continue;
-                if (!ColorUtility.TryParseHtmlString((string)slot["color"], out Color color)) continue;
+                string hex = (string)slot["color"];
+                if (string.Equals(hex, (string)slot["default"], StringComparison.OrdinalIgnoreCase)) continue;
+                if (!ColorUtility.TryParseHtmlString(hex, out Color color)) continue;
                 int row = (int)cell[0], col = (int)cell[1];
                 Paint(pal, row, col, grid, color);
                 if ((bool?)slot["glow"] == true) Paint(glow, row, col, grid, color);

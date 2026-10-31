@@ -230,7 +230,7 @@ namespace LegendsNexus.Alley.Editor
             var work = new List<(BoothLocation location, StaffBooth booth)>();
             foreach ((BoothLocation location, StaffBooth booth) in plan)
             {
-                if (skipUpToDate && location.placedSha256 == booth.sha256 && location.HasBooth)
+                if (skipUpToDate && location.placedSha256 == WebBooths.ShaFor(booth, location) && location.HasBooth)
                 {
                     queue.skippedCount++;
                     continue;

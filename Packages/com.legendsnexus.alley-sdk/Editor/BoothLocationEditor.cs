@@ -107,6 +107,23 @@ namespace LegendsNexus.Alley.Editor
             locked.BindProperty(serializedObject.FindProperty("locked"));
             card.Add(locked);
 
+            // website booths build on the standard or the Christmas Alley Booth v2.
+            // select every plot to switch a whole map at once
+            SerializedProperty styleProp = serializedObject.FindProperty(nameof(BoothLocation.webBoothStyle));
+            var styleNames = new List<string> { "Standard", "Christmas" };
+            var style = new PopupField<string>("Website booth look", styleNames,
+                styleProp.hasMultipleDifferentValues ? 0 : (styleProp.stringValue == WebBooths.ChristmasStyle ? 1 : 0));
+            style.showMixedValue = styleProp.hasMultipleDifferentValues;
+            style.tooltip = "The look booths made on the website get on this plot. Sync again after a change to rebuild them.";
+            style.RegisterValueChangedCallback(e =>
+            {
+                serializedObject.Update();
+                styleProp.stringValue = e.newValue == "Christmas" ? WebBooths.ChristmasStyle : "";
+                serializedObject.ApplyModifiedProperties();
+                style.showMixedValue = false;
+            });
+            card.Add(style);
+
             if (serializedObject.isEditingMultipleObjects) return root;
 
             var status = new Label();

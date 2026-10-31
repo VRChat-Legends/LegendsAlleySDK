@@ -17,6 +17,9 @@ namespace LegendsNexus.Alley
         [Tooltip("Locked plots are skipped by the importer.")]
         public bool locked = false;
 
+        [Tooltip("Which look booths built on the website get on this plot. Empty is the standard booth, \"christmas\" the Christmas one. Uploaded booth packages keep their own look.")]
+        public string webBoothStyle = "";
+
         [Header("Placed booth (managed by the importer)")]
         public string placedCommunityId = "";
         public string placedCommunityName = "";
