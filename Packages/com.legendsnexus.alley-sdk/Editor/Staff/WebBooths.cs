@@ -213,6 +213,61 @@ namespace LegendsNexus.Alley.Editor
             if (!Configs.TryGetValue(staffBooth.id, out JObject booth)) throw new Exception("its settings were not fetched, sync again");
             string name = staffBooth.communityName;
             bool christmas = IsChristmas(location);
+            for (int c = location.transform.childCount - 1; c >= 0; c--)
+            {
+                UnityEngine.Object.DestroyImmediate(location.transform.GetChild(c).gameObject);
+            }
+            await Assemble(booth, $"{ImportRoot}/{boothFolder}/Web", name, christmas, (url, _) => Download(url), location.transform, true);
+
+            location.placedCommunityId = staffBooth.communityId ?? "";
+            location.placedCommunityName = name;
+            location.placedGroupId = staffBooth.groupId ?? "";
+            location.placedDescription = staffBooth.description ?? "";
+            location.placedVersion = staffBooth.version;
+            location.placedSha256 = ShaFor(staffBooth, location);
+            EditorUtility.SetDirty(location);
+            EditorSceneManager.MarkSceneDirty(location.gameObject.scene);
+            AssetDatabase.SaveAssets();
+            log($"Placed {name} v{staffBooth.version} (website booth{(christmas ? ", Christmas" : "")}) on plot {location.PlotLabel}.");
+        }
+
+        // a booth downloaded from the website as a Unity package: booth.json and its
+        // pictures sit in one folder, and the prefab is built next to them. returns
+        // the prefab path
+        public static async Task<string> BuildFromPackage(string jsonPath, bool christmas)
+        {
+            JObject booth = ParseJson(File.ReadAllText(jsonPath));
+            if ((int?)booth["schema"] != 1 || (string)booth["prefab"]?["id"] != "alley-booth-v2")
+            {
+                throw new Exception("this booth.json is not an Alley Booth v2 website booth, or it needs a newer SDK");
+            }
+            string folder = Path.GetDirectoryName(jsonPath).Replace('\\', '/');
+            string name = (string)booth["fields"]?["displayName"] ?? (string)booth["communityName"] ?? "Web";
+            // built in a preview scene, so the open scene is not touched
+            UnityEngine.SceneManagement.Scene stage = EditorSceneManager.NewPreviewScene();
+            try
+            {
+                var holder = new GameObject("Web Booth Build");
+                UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(holder, stage);
+                GameObject instance = await Assemble(booth, folder, name, christmas,
+                    (_, local) => Task.FromResult(File.Exists(local) ? File.ReadAllBytes(local) : null), holder.transform, false);
+                string path = AssetDatabase.GetAssetPath(PrefabUtility.GetCorrespondingObjectFromSource(instance));
+                AssetDatabase.SaveAssets();
+                return path;
+            }
+            finally
+            {
+                EditorSceneManager.ClosePreviewScene(stage);
+                EditorUtility.ClearProgressBar();
+            }
+        }
+
+        // builds the booth prefab in the folder, from the settings and pictures
+        // that fetch hands over (url, where the picture goes), and leaves an
+        // instance of it under the parent
+        private static async Task<GameObject> Assemble(JObject booth, string folder, string name, bool christmas,
+            Func<string, string, Task<byte[]>> fetch, Transform parent, bool writeJson)
+        {
             GameObject baseAsset = LoadBase((string)booth["prefab"]?["unityPrefab"], christmas);
             if (baseAsset == null) throw new Exception("the Legends Alley SDK is missing Alley Booth v2, update or reinstall the SDK");
             // banners come from the standard booth, the palette from the look in use
@@ -220,10 +275,9 @@ namespace LegendsNexus.Alley.Editor
             string baseRoot = FolderOf(standard);
             string styleRoot = FolderOf(baseAsset);
 
-            string folder = $"{ImportRoot}/{boothFolder}/Web";
             Directory.CreateDirectory(folder + "/Textures");
             Directory.CreateDirectory(folder + "/Materials");
-            File.WriteAllText(folder + "/booth.json", booth.ToString());
+            if (writeJson) File.WriteAllText(folder + "/booth.json", booth.ToString());
 
             // ---- download everything, then one import pass
             EditorUtility.DisplayProgressBar("Legends Alley", $"Downloading {name}'s web booth...", 0.2f);
@@ -231,9 +285,9 @@ namespace LegendsNexus.Alley.Editor
             JObject images = booth["images"] as JObject ?? new JObject();
             foreach (string slot in new[] { "sign", "backdrop", "screen", "groupIcon" })
             {
-                byte[] bytes = await Download((string)images[slot]?["url"]);
-                if (bytes == null) continue;
                 string path = $"{folder}/Textures/{slot}.png";
+                byte[] bytes = await fetch((string)images[slot]?["url"], path);
+                if (bytes == null) continue;
                 File.WriteAllBytes(path, bytes);
                 files[slot] = path;
             }
@@ -248,16 +302,16 @@ namespace LegendsNexus.Alley.Editor
                 int i = 0;
                 foreach (JObject slide in (backdrop["slides"] as JArray ?? new JArray()).OfType<JObject>())
                 {
-                    byte[] bytes = await Download((string)slide["url"]);
-                    if (bytes == null) continue;
                     string path = $"{folder}/Textures/slide-{++i:00}.png";
+                    byte[] bytes = await fetch((string)slide["url"], path);
+                    if (bytes == null) continue;
                     File.WriteAllBytes(path, bytes);
                     slidePaths.Add(path);
                 }
             }
 
             JObject cutout = items["cutout"] as JObject;
-            byte[] cutoutBytes = (bool?)cutout?["enabled"] == true ? await Download((string)cutout["image"]?["url"]) : null;
+            byte[] cutoutBytes = (bool?)cutout?["enabled"] == true ? await fetch((string)cutout["image"]?["url"], folder + "/Textures/cutout.png") : null;
 
             EditorUtility.DisplayProgressBar("Legends Alley", $"Building {name}'s web booth...", 0.6f);
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
@@ -286,11 +340,9 @@ namespace LegendsNexus.Alley.Editor
             if (slideshow && slidePaths.Count > 0) slidesMaterial = BakeSlides(baseRoot, folder, slidePaths, out columns, out rows);
 
             // ---- the variant: an instance of the base prefab, edited, saved back as a variant
-            for (int c = location.transform.childCount - 1; c >= 0; c--)
-            {
-                UnityEngine.Object.DestroyImmediate(location.transform.GetChild(c).gameObject);
-            }
-            var instance = (GameObject)PrefabUtility.InstantiatePrefab(baseAsset, location.transform);
+            var instance = parent != null
+                ? (GameObject)PrefabUtility.InstantiatePrefab(baseAsset, parent)
+                : (GameObject)PrefabUtility.InstantiatePrefab(baseAsset);
             instance.name = name + " Booth";
             instance.transform.localPosition = Vector3.zero;
             instance.transform.localRotation = Quaternion.identity;
@@ -334,17 +386,7 @@ namespace LegendsNexus.Alley.Editor
                 if (instance != null) UnityEngine.Object.DestroyImmediate(instance);
                 throw;
             }
-
-            location.placedCommunityId = staffBooth.communityId ?? "";
-            location.placedCommunityName = name;
-            location.placedGroupId = staffBooth.groupId ?? "";
-            location.placedDescription = staffBooth.description ?? "";
-            location.placedVersion = staffBooth.version;
-            location.placedSha256 = ShaFor(staffBooth, location);
-            EditorUtility.SetDirty(location);
-            EditorSceneManager.MarkSceneDirty(location.gameObject.scene);
-            AssetDatabase.SaveAssets();
-            log($"Placed {name} v{staffBooth.version} (website booth{(christmas ? ", Christmas" : "")}) on plot {location.PlotLabel}.");
+            return instance;
         }
 
         // images only come from the website itself, never another host the json names
