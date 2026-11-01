@@ -97,12 +97,15 @@ namespace LegendsNexus.Alley.Editor
         }
 
         // approved web booths as staff booths. sha256 is a version marker, so the
-        // sync skips plots that already hold this version like it does packages
-        public static async Task<StaffBooth[]> Fetch(string alleyToken, Action<string> log)
+        // sync skips plots that already hold this version like it does packages.
+        // with an event, only booths sent in for it (and ones from before booths
+        // picked an event)
+        public static async Task<StaffBooth[]> Fetch(string alleyToken, Action<string> log, string eventId = null)
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Get, new Uri(ApiBase(), "api/alley/prefab-booths/sdk"));
+                string query = string.IsNullOrEmpty(eventId) ? "" : "?eventId=" + Uri.EscapeDataString(eventId);
+                var request = new HttpRequestMessage(HttpMethod.Get, new Uri(ApiBase(), "api/alley/prefab-booths/sdk" + query));
                 request.Headers.Add("X-Alley-Token", alleyToken ?? "");
                 HttpResponseMessage response = await Client.SendAsync(request);
                 string body = await response.Content.ReadAsStringAsync();
@@ -118,6 +121,9 @@ namespace LegendsNexus.Alley.Editor
                 foreach (JObject config in (ParseJson(body)["booths"] as JArray ?? new JArray()).OfType<JObject>())
                 {
                     if ((int?)config["schema"] != 1 || (string)config["prefab"]?["id"] != "alley-booth-v2") continue;
+                    // a website that does not filter yet still only places this event's booths
+                    string boothEvent = (string)(config["event"] as JObject)?["id"];
+                    if (!string.IsNullOrEmpty(eventId) && !string.IsNullOrEmpty(boothEvent) && boothEvent != eventId) continue;
                     string id = (string)config["id"];
                     string communityId = (string)config["communityId"];
                     StaffCommunity community = StaffCommunityCache.Communities.FirstOrDefault(c => c != null && c.id == communityId);

@@ -47,7 +47,7 @@ namespace LegendsNexus.Alley.Editor
             // the roster fetch also fills the community cache the web booths read slugs from
             HashSet<string> disabled = await FetchDisabledCommunities();
             // booths built on the website join the same list, approved ones only
-            booths = WebBooths.Merge(booths, await WebBooths.Fetch(AlleySession.Token, Log));
+            booths = WebBooths.Merge(booths, await WebBooths.Fetch(AlleySession.Token, Log, alleyEvent?.id));
             if (disabled.Count == 0) return booths;
 
             StaffBooth[] enabled = booths.Where(b => !disabled.Contains(b.communityId)).ToArray();
