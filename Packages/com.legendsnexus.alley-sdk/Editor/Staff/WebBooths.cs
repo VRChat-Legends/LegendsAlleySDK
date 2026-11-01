@@ -57,13 +57,20 @@ namespace LegendsNexus.Alley.Editor
 
         public static bool IsChristmas(BoothLocation location) => location != null && location.webBoothStyle == ChristmasStyle;
 
+        // the community can pick the Christmas look in the booth builder; the
+        // plot's look can also turn it on for every booth placed there
+        public static bool WantsChristmas(JObject booth) => (string)booth?["style"] == ChristmasStyle;
+
+        private static bool IsChristmas(StaffBooth booth, BoothLocation location) =>
+            IsChristmas(location) || (booth != null && Configs.TryGetValue(booth.id ?? "", out JObject config) && WantsChristmas(config));
+
         // what a plot holding this booth should have as its version marker. web
         // booths also carry the base revision and the plot's look, so a new
         // base or a look change rebuilds them on the next sync
         public static string ShaFor(StaffBooth booth, BoothLocation location)
         {
             if (!IsWeb(booth)) return booth?.sha256;
-            return $"{booth.sha256}:{BuildRevision}" + (IsChristmas(location) ? ":" + ChristmasStyle : "");
+            return $"{booth.sha256}:{BuildRevision}" + (IsChristmas(booth, location) ? ":" + ChristmasStyle : "");
         }
 
         // the booth to build on. the website names the standard booth; older
@@ -219,7 +226,7 @@ namespace LegendsNexus.Alley.Editor
         {
             if (!Configs.TryGetValue(staffBooth.id, out JObject booth)) throw new Exception("its settings were not fetched, sync again");
             string name = staffBooth.communityName;
-            bool christmas = IsChristmas(location);
+            bool christmas = IsChristmas(location) || WantsChristmas(booth);
             for (int c = location.transform.childCount - 1; c >= 0; c--)
             {
                 UnityEngine.Object.DestroyImmediate(location.transform.GetChild(c).gameObject);
@@ -248,6 +255,8 @@ namespace LegendsNexus.Alley.Editor
             {
                 throw new Exception("this booth.json is not an Alley Booth v2 website booth, or it needs a newer SDK");
             }
+            // the look picked on the website, unless the menu asked for Christmas
+            christmas = christmas || WantsChristmas(booth);
             string folder = Path.GetDirectoryName(jsonPath).Replace('\\', '/');
             string name = (string)booth["fields"]?["displayName"] ?? (string)booth["communityName"] ?? "Web";
             // built in a preview scene, so the open scene is not touched
