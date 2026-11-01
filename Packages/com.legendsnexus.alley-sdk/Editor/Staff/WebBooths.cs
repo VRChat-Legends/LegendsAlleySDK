@@ -33,8 +33,9 @@ namespace LegendsNexus.Alley.Editor
         private const string StandardGuid = "7e1f1dd2b0eec9a4c9ed01ae34f93c86";
 
         // bumped when the base booth changes in a way placed booths should pick
-        // up on the next sync (2: the screen moved to the back wall)
-        private const string BuildRevision = "b2";
+        // up on the next sync (2: the screen moved to the back wall, 3: stored
+        // controls positions fixed on the website)
+        private const string BuildRevision = "b3";
         private const string DefaultApi = "https://api.vrchatlegends.com";
         // only for testing against a local website, the live site needs nothing set
         public const string ApiOverridePref = "LegendsAlley.WebBoothsApi";
